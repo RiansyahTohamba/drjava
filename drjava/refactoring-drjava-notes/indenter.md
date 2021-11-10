@@ -1,2 +1,0 @@
-Indenter
-	buildTree=10

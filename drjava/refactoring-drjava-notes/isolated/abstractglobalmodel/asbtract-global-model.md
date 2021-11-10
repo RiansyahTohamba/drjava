@@ -31,6 +31,10 @@ setMaximumSize
 saya sudah extract satu method 'maximumSize()'
 
  
+didalam init._gainVisitor terdapat
+1. itemcase
+2. filecase
+3. stringcase
 
 
 

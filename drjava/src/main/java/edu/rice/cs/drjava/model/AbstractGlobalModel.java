@@ -301,7 +301,6 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
 
       public Boolean itemCase(OpenDefinitionsDocument doc, Object... p) {
         _setActiveDoc(doc);  // sets _activeDocument, the shadow copy of the active document   
-//        Utilities.showDebug("Setting the active doc done");
         final File oldDir = _activeDirectory;  // _activeDirectory can be null
         final File dir = doc.getParentDirectory();  // dir can be null
         if (dir != null && ! dir.equals(oldDir)) {
@@ -313,6 +312,7 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
 
       public Boolean fileCase(File f, Object... p) {
         if (! f.isAbsolute()) { // should never happen because all file names are canonicalized
+          // TODO: extract
           File root = _state.getProjectFile().getParentFile().getAbsoluteFile();
           f = new File(root, f.getPath());
         }
@@ -326,17 +326,16 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
     
     /** Listener that invokes the _gainVisitor when a selection is made in the document navigator. */
     _documentNavigator.addNavigationListener(new INavigationListener<OpenDefinitionsDocument>() {
-      public void gainedSelection(NodeData<? extends OpenDefinitionsDocument> dat, boolean modelInitiated) {
-        dat.execute(_gainVisitor, modelInitiated); }
-      public void lostSelection(NodeData<? extends OpenDefinitionsDocument> dat, boolean modelInitiated) {
-      /* not important, only one document selected at a time */ }
+        public void gainedSelection(NodeData<? extends OpenDefinitionsDocument> dat, boolean modelInitiated) {
+          dat.execute(_gainVisitor, modelInitiated); 
+        }
+        public void lostSelection(NodeData<? extends OpenDefinitionsDocument> dat, boolean modelInitiated) {
+        /* not important, only one document selected at a time */ }
     });
     
     // The document navigator gets the focus in 
     _documentNavigator.addFocusListener(new FocusListener() {
       public void focusGained(FocusEvent e) {
-//        System.err.println("_documentNavigator.focusGained(...) called");
-//        if (_documentNavigator.getCurrent() != null) // past selection is leaf node
         Utilities.invokeLater(new Runnable() { public void run() { _notifier.focusOnDefinitionsPane(); } });
       }
       public void focusLost(FocusEvent e) { }
@@ -353,16 +352,19 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
     };
 
     DrJava.getConfig().addOptionListener(CLIPBOARD_HISTORY_SIZE, clipboardHistorySizeListener);
+    // todo: DrJava.getConfig().getSetting
     ClipboardHistoryModel.singleton().resize(DrJava.getConfig().getSetting(CLIPBOARD_HISTORY_SIZE).intValue());
     
     // setup option listener for browser history
     OptionListener<Integer> browserHistoryMaxSizeListener = new OptionListener<Integer>() {
       public void optionChanged(OptionEvent<Integer> oce) {
-        AbstractGlobalModel.this.getBrowserHistoryManager().setMaximumSize(oce.value);
+        // todo: duplicate
+        getBrowserHistoryManager().setMaximumSize(oce.value);
       }
     };
 
     DrJava.getConfig().addOptionListener(BROWSER_HISTORY_MAX_SIZE, browserHistoryMaxSizeListener);
+    // extract getMaximumSize()
     int maximumSize = getMaximumSize();
     getBrowserHistoryManager().setMaximumSize(maximumSize);
   }
@@ -899,7 +901,6 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
           if (!could) undeletableFiles.add(file);
           monitor.setProgress(progress++);
         }
-//      if (! dir.exists()) dir.mkdirs (); // TODO: figure out where to put this.
         return undeletableFiles;
       }
       public void complete(AsyncCompletionArgs<List<File>> args) {
@@ -2686,6 +2687,7 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
     Position startPos = null;
     Position endPos = null;
     try {
+      // todo: extract
       int pos = doc.getCaretPosition();
       startPos = doc.createPosition(pos);
       endPos = startPos; // was doc.createPosition(doc._getLineEndPos(pos));
@@ -3506,7 +3508,8 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
       }
       catch (InvalidPackageException ipe) {
         try {
-//          _log.log(this + " has no source root, using parent directory instead");
+      //todo: extract root variable, duplicate getFile().getParentFile
+
           File root = getFile().getParentFile();
           if (root != FileOps.NULL_FILE) {
             roots.add(root);
@@ -3517,6 +3520,8 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
         catch(FileMovedException fme) {
           // Moved, but we'll add the old file to the set anyway
           _log.log("File for " + this + "has moved; adding parent directory to list of roots");
+        // todo: extract
+          
           File root = fme.getFile().getParentFile();
           if (root != FileOps.NULL_FILE) roots.add(root);
         }
@@ -3533,6 +3538,8 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
       classFile = findFileInPaths(fileName, ReflectUtil.SYSTEM_CLASS_PATH);
       
       if (classFile != FileOps.NULL_FILE) return classFile;
+    
+    // todo: extract
       
       // not on system classpath, check interactions classpath
       Vector<File> cpSetting = DrJava.getConfig().getSetting(EXTRA_CLASSPATH);
