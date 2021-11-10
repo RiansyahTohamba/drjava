@@ -1,7 +1,23 @@
 class IsolatedInit{
   // CINT = 31 matches
-	// sesuai namanya, init memeang inisasi
-	// finish
+  // cek saja sudah berapa todo untuk di extract?
+  
+  /* 
+  didalam init._gainVisitor terdapat
+  1. itemcase
+  2. filecase
+  3. stringcase
+  bagaimana caranya _gainVisitor ini digunakan?
+    digunakan oleh dat, didalam nested function _documentNavigator.addNavigationListener
+    dat.execute(_gainVisitor, modelInitiated); 
+
+  */
+  /*
+
+	sesuai namanya, init memang inisasi
+  dan inisiasi itu memang ditoleransi DCH nya
+	sudah tidak ada lagi yang bisa di optimize
+  */
   private void _init() {
     /** This visitor is invoked by the DocumentNavigator to update _activeDocument among other things */
     final NodeDataVisitor<OpenDefinitionsDocument, Boolean>  _gainVisitor = 
@@ -34,7 +50,8 @@ class IsolatedInit{
     /** Listener that invokes the _gainVisitor when a selection is made in the document navigator. */
     _documentNavigator.addNavigationListener(new INavigationListener<OpenDefinitionsDocument>() {
       public void gainedSelection(NodeData<? extends OpenDefinitionsDocument> dat, boolean modelInitiated) {
-        dat.execute(_gainVisitor, modelInitiated); }
+        dat.execute(_gainVisitor, modelInitiated); 
+      }
       public void lostSelection(NodeData<? extends OpenDefinitionsDocument> dat, boolean modelInitiated) {
       /* not important, only one document selected at a time */ }
     });
