@@ -6,11 +6,17 @@ ada juga init yang tidak pakai new Class()
 # mulai dari AbstractGlobalModel
 
 AbstractGlobalModel
-	_init=10
-	addToBrowserHistory=6.625
-	_locateClassFile=7.75
+_init=10
+_locateClassFile=7.75
+addToBrowserHistory=6.625
 
-## _init()
+
+## addToBrowserHistory() ?
+
+## _locateClassFile() ?
+
+
+## _init() - tidak terdeteksi jdeodorant
 hanya dipakai di local class, makanya privat
 
 length = 366-297 = 69 LOC
@@ -22,15 +28,10 @@ _documentNavigator.addFocusListener = 336 - 343
 browserHistoryMaxSizeListener = 359 - 363
 setMaximumSize
 ===== 366
+saya sudah extract satu method 'maximumSize()'
 
+ 
 
-# intellijdeodorant tidak bisa digunakan
-
-2 kendala
-1. build selalu gagal: java: error: invalid source release: 16
-2. interface JUnitModel tidak dapat digunakan
-
-## addToBrowserHistory()
 
 
 # tahapan experiment
@@ -55,3 +56,21 @@ setMaximumSize
 	testclass nya bisa dianggap production code juga
 	karena memang dipakai oleh class prod lain wkwkw.	
 	nanti didalami lagi apakah diikutkan dalam data atau tidak 
+
+# hasil deteksi JDeodorant
+dari 3 method ini, ga ada yg terdeteksi jdeodorant sbg smell feature-envy, god-class, maupun long method.
+ini menujukkan DCH tidak terkait dengan LongMethod.
+Sebelumnya sy pikir, DCH dan LongMethod berkorelasi kuat.
+ternyata tidak!
+dari parsing nya, DCH memperhitungkan jumlah '.'
+jumlah titik ini menujukkan call yg dilakukan suatu method.
+
+
+# 2 kendala intellijdeodorant tdk bisa digunakan
+1. build selalu gagal: java: error: invalid source release: 16
+   jadi 2 menu di intellij harus disesuaikan
+2. interface JUnitModel tidak dapat digunakan
+   jangan buka semua direktori
+   buka sesuai scope folder 'drjava/drjava'
+   bukan 'drjava/*'
+   

@@ -293,12 +293,12 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
     Utilities.invokeLater(new Runnable() { public void run() { _notifier.projectRunnableChanged(); } });
     _init();
   }
-  
+
   private void _init() {
-    
     /** This visitor is invoked by the DocumentNavigator to update _activeDocument among other things */
     final NodeDataVisitor<OpenDefinitionsDocument, Boolean>  _gainVisitor = 
       new NodeDataVisitor<OpenDefinitionsDocument, Boolean>() {
+
       public Boolean itemCase(OpenDefinitionsDocument doc, Object... p) {
         _setActiveDoc(doc);  // sets _activeDocument, the shadow copy of the active document   
 //        Utilities.showDebug("Setting the active doc done");
@@ -310,6 +310,7 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
         }
         return Boolean.valueOf(true);
       }
+
       public Boolean fileCase(File f, Object... p) {
         if (! f.isAbsolute()) { // should never happen because all file names are canonicalized
           File root = _state.getProjectFile().getParentFile().getAbsoluteFile();
@@ -320,6 +321,7 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
         return Boolean.valueOf(true);
       }
       public Boolean stringCase(String s, Object... p) { return Boolean.valueOf(false); }
+
     };
     
     /** Listener that invokes the _gainVisitor when a selection is made in the document navigator. */
@@ -349,6 +351,7 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
         ClipboardHistoryModel.singleton().resize(oce.value);
       }
     };
+
     DrJava.getConfig().addOptionListener(CLIPBOARD_HISTORY_SIZE, clipboardHistorySizeListener);
     ClipboardHistoryModel.singleton().resize(DrJava.getConfig().getSetting(CLIPBOARD_HISTORY_SIZE).intValue());
     
@@ -358,10 +361,16 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
         AbstractGlobalModel.this.getBrowserHistoryManager().setMaximumSize(oce.value);
       }
     };
+
     DrJava.getConfig().addOptionListener(BROWSER_HISTORY_MAX_SIZE, browserHistoryMaxSizeListener);
-    getBrowserHistoryManager().setMaximumSize(DrJava.getConfig().getSetting(BROWSER_HISTORY_MAX_SIZE).intValue());
+    int maximumSize = getMaximumSize();
+    getBrowserHistoryManager().setMaximumSize(maximumSize);
   }
-  
+
+  private int getMaximumSize() {
+    return DrJava.getConfig().getSetting(BROWSER_HISTORY_MAX_SIZE).intValue();
+  }
+
   // ----- STATE -----
   
   /** Specifies the state of the navigator pane.  The global model delegates the compileAll command to the _state.

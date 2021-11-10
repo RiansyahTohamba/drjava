@@ -33,7 +33,7 @@ import java.util.List;
 import edu.rice.cs.drjava.model.OpenDefinitionsDocument;
 import edu.rice.cs.util.text.SwingDocument;
 
-public interface JUnitModelDr {
+public interface JUnitModel {
   
   //-------------------------- Field Setters --------------------------------//
   
