@@ -1,21 +1,3 @@
-main.md
-
-# start - mulai build proses serangan! 
-
-
-klo init-init biasanya hanya berisi 'new Class()'
-ada juga init yang tidak pakai new Class()
-
-mulai dari AbstractGlobalModel
-
-AbstractGlobalModel
-	_init=10
-	addToBrowserHistory=6.625
-	_locateClassFile=7.75
-
-Indenter
-	buildTree=10
-
 DefinitionsPane
 	DefinitionsPane()=10
 
