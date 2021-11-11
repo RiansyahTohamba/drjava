@@ -1,3 +1,4 @@
+
 class IsolatedInit{
   // CINT = 31 matches
   // cek saja sudah berapa todo untuk di extract?

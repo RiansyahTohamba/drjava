@@ -1,3 +1,5 @@
+// BELUM di refactor
+
 class Isolated_addToBrowserHistory{
 	// CINT = 8 matches
 	// addToBrowserHistory=6.625

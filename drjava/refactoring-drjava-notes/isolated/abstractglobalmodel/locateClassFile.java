@@ -1,3 +1,4 @@
+
 class Isolated{
 	// CINT = 14 matches
 	private File _locateClassFile() {
