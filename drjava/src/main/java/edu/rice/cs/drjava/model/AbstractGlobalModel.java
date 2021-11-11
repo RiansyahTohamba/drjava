@@ -75,11 +75,7 @@ import javax.swing.text.Style;
 import javax.swing.ProgressMonitor;
 
 import edu.rice.cs.drjava.DrJava;
-import edu.rice.cs.drjava.config.Option;
-import edu.rice.cs.drjava.config.OptionParser;
-import edu.rice.cs.drjava.config.OptionConstants;
-import edu.rice.cs.drjava.config.OptionEvent;
-import edu.rice.cs.drjava.config.OptionListener;
+import edu.rice.cs.drjava.config.*;
 import edu.rice.cs.drjava.model.cache.DCacheAdapter;
 import edu.rice.cs.drjava.model.cache.DDReconstructor;
 import edu.rice.cs.drjava.model.cache.DocumentCache ;
@@ -163,7 +159,7 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
   
   static final String DOCUMENT_OUT_OF_SYNC_MSG =
     "Current document is out of sync with the Interactions Pane and should be recompiled!\n";
-  
+
   static final String CLASSPATH_OUT_OF_SYNC_MSG =
     "Interactions Pane is out of sync with the current classpath and should be reset!\n";
   
@@ -312,9 +308,7 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
 
       public Boolean fileCase(File f, Object... p) {
         if (! f.isAbsolute()) { // should never happen because all file names are canonicalized
-          // TODO: extract
-          File root = _state.getProjectFile().getParentFile().getAbsoluteFile();
-          f = new File(root, f.getPath());
+          f = new File(getRoot(), f.getPath());
         }
         _activeDirectory = f;  // Invariant: activeDirectory != null
         _notifier.currentDirectoryChanged(f);
@@ -351,26 +345,32 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
       }
     };
 
-    DrJava.getConfig().addOptionListener(CLIPBOARD_HISTORY_SIZE, clipboardHistorySizeListener);
-    // todo: DrJava.getConfig().getSetting
-    ClipboardHistoryModel.singleton().resize(DrJava.getConfig().getSetting(CLIPBOARD_HISTORY_SIZE).intValue());
+    setOptionListener(CLIPBOARD_HISTORY_SIZE,clipboardHistorySizeListener);
+    ClipboardHistoryModel.singleton().resize(getMaximumSize(CLIPBOARD_HISTORY_SIZE));
     
     // setup option listener for browser history
     OptionListener<Integer> browserHistoryMaxSizeListener = new OptionListener<Integer>() {
       public void optionChanged(OptionEvent<Integer> oce) {
-        // todo: duplicate
         getBrowserHistoryManager().setMaximumSize(oce.value);
       }
     };
 
-    DrJava.getConfig().addOptionListener(BROWSER_HISTORY_MAX_SIZE, browserHistoryMaxSizeListener);
+    setOptionListener(BROWSER_HISTORY_MAX_SIZE, browserHistoryMaxSizeListener);
     // extract getMaximumSize()
-    int maximumSize = getMaximumSize();
-    getBrowserHistoryManager().setMaximumSize(maximumSize);
+    int size = getMaximumSize(BROWSER_HISTORY_MAX_SIZE);
+    getBrowserHistoryManager().setMaximumSize(size);
   }
 
-  private int getMaximumSize() {
-    return DrJava.getConfig().getSetting(BROWSER_HISTORY_MAX_SIZE).intValue();
+  private void setOptionListener(NonNegativeIntegerOption size, OptionListener<Integer> clipboardHistorySizeListener) {
+    DrJava.getConfig().addOptionListener(size, clipboardHistorySizeListener);
+  }
+
+  private File getRoot() {
+    return _state.getProjectFile().getParentFile().getAbsoluteFile();
+  }
+
+  private int getMaximumSize(NonNegativeIntegerOption size) {
+    return DrJava.getConfig().getSetting(size).intValue();
   }
 
   // ----- STATE -----
@@ -2683,22 +2683,25 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
     _notifier.updateCurrentLocationInDoc();
     final OpenDefinitionsDocument doc = getActiveDocument();
     assert (doc != null && EventQueue.isDispatchThread()) || Utilities.TEST_MODE;
-    
+    BrowserDocumentRegion docRegion = getDocRegion(doc);
+    if (before) _browserHistoryManager.addBrowserRegionBefore(docRegion, _notifier);
+    else _browserHistoryManager.addBrowserRegion(docRegion, _notifier);
+  }
+
+  private BrowserDocumentRegion getDocRegion(OpenDefinitionsDocument doc) {
     Position startPos = null;
     Position endPos = null;
     try {
-      // todo: extract
       int pos = doc.getCaretPosition();
       startPos = doc.createPosition(pos);
-      endPos = startPos; // was doc.createPosition(doc._getLineEndPos(pos));
+      endPos = startPos;
+    } catch (BadLocationException ble) {
+      throw new UnexpectedException(ble);
     }
-    
-    catch (BadLocationException ble) { throw new UnexpectedException(ble); }
-    BrowserDocumentRegion r = new BrowserDocumentRegion(doc, startPos, endPos);
-    if (before) _browserHistoryManager.addBrowserRegionBefore(r, _notifier);
-    else _browserHistoryManager.addBrowserRegion(r, _notifier);
+    BrowserDocumentRegion docRegion = new BrowserDocumentRegion(doc, startPos, endPos);
+    return docRegion;
   }
-  
+
   /** throws an UnsupportedOperationException */
   public Iterable<File> getClassPath() {
     throw new UnsupportedOperationException("AbstractGlobalModel does not support class paths");
@@ -2920,8 +2923,7 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
     /** @return the name of this file, or "(Untitled)" if no file. */
     public String getFileName() {
       if (_file == null) return "(Untitled)";
-//      if (isUntitled()) return "(Untitled)";
-      return _file.getName(); 
+      return _file.getName();
     }
     
     /** @return the name of the file for this document with an appended asterisk (if modified) or spaces */
@@ -3476,76 +3478,57 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
       */
     private File _locateClassFile() {
       // TODO: define in terms of GlobalModel.getClassPath()
-      
       if (isUntitled()) return FileOps.NULL_FILE;
-      
       String className;
       try { className = getDocument().getQualifiedClassName(); }
       catch (ClassNameNotFoundException cnnfe) {
         _log.log("_locateClassFile() failed for " + this + " because getQualifedClassName returned ClassNotFound");
         return FileOps.NULL_FILE;  /* No source class name */ 
       }
-//      _log.log("In _locateClassFile, className = " + className);
       String ps = System.getProperty("file.separator");
       // replace periods with the System's file separator
       className = StringOps.replace(className, ".", ps);
       String fileName = className + ".class";
       
-//      _log.log("In _locateClassFile, classfileName = " + fileName);
-      
       // Check source root set (open files)
       ArrayList<File> roots = new ArrayList<File>();
-      
-//      _log.log("build directory = " + getBuildDirectory());
-      
       if (getBuildDirectory() != FileOps.NULL_FILE) roots.add(getBuildDirectory());
       
       // Add the current document to the beginning of the roots list
       try {
         File root = getSourceRoot();
-//        _log.log("Directory " + root + " added to list of source roots");
-        roots.add(root); 
+        roots.add(root);
       }
       catch (InvalidPackageException ipe) {
         try {
-      //todo: extract root variable, duplicate getFile().getParentFile
-
-          File root = getFile().getParentFile();
+          File root = getRootParent();
           if (root != FileOps.NULL_FILE) {
             roots.add(root);
-//            _log.log("Added parent directory " + root + " to list of source roots");
           }
         }
         catch(NullPointerException e) { throw new UnexpectedException(e); }
         catch(FileMovedException fme) {
           // Moved, but we'll add the old file to the set anyway
           _log.log("File for " + this + "has moved; adding parent directory to list of roots");
-        // todo: extract
-          
           File root = fme.getFile().getParentFile();
           if (root != FileOps.NULL_FILE) roots.add(root);
         }
       }
-      
       File classFile = findFileInPaths(fileName, roots);
       if (classFile != FileOps.NULL_FILE) {
-//        _log.log("Found source file " + classFile + " for " + this);
         return classFile;
       }
-      
-//      _log.log(this + " not found on path of source roots");
       // Class not on source root set, check system classpath
       classFile = findFileInPaths(fileName, ReflectUtil.SYSTEM_CLASS_PATH);
-      
       if (classFile != FileOps.NULL_FILE) return classFile;
-    
-    // todo: extract
-      
       // not on system classpath, check interactions classpath
-      Vector<File> cpSetting = DrJava.getConfig().getSetting(EXTRA_CLASSPATH);
-      return findFileInPaths(fileName, cpSetting);
+      return findFileInPaths(fileName, getConfigSetting(EXTRA_CLASSPATH));
     }
-    
+
+    private File getRootParent() throws FileMovedException {
+      return getFile().getParentFile();
+    }
+
     /** Determines if the definitions document has been changed by an outside agent. If the document has changed,
       * asks the listeners if the GlobalModel should revert the document to the most recent version saved.
       * @return true if document has been reverted
@@ -4033,7 +4016,11 @@ public class AbstractGlobalModel implements SingleDisplayModel, OptionConstants,
       return getDocument().containsClassOrInterfaceOrEnum();
     }
   } /* End of ConcreteOpenDefDoc */
-  
+
+  private Vector<File> getConfigSetting(VectorOption<File> op) {
+    return DrJava.getConfig().getSetting(op);
+  }
+
   private static class TrivialFSS implements FileSaveSelector {
     private File _file;
     private TrivialFSS(File file) { _file = file; }
