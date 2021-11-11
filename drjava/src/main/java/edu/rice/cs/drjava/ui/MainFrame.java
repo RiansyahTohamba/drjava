@@ -188,7 +188,7 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
   private volatile InteractionsController _interactionsController;
   private volatile InteractionsScriptController _interactionsScriptController;
   private volatile InteractionsScriptPane _interactionsScriptPane;
-  
+
   private volatile boolean _showDebugger;  // whether the supporting context is debugger capable
   
   
@@ -3352,30 +3352,7 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
                                 new JScrollPane(_model.getDocumentNavigator().asContainer()), defScroll);
       _debugSplitPane = new BorderlessSplitPane(JSplitPane.VERTICAL_SPLIT, true);
       _mainSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, true, _docSplitPane, _tabbedPane);
-// Lightweight parsing has been disabled until we have something that is beneficial and works better in the background.
-//// The OptionListener for LIGHTWEIGHT_PARSING_ENABLED.
-//    OptionListener<Boolean> parsingEnabledListener = new OptionListener<Boolean>() {
-//      public void optionChanged(OptionEvent<Boolean> oce) {
-//        if (oce.value) {
-//          _model.getParsingControl().addListener(new LightWeightParsingListener() {
-//            public void enclosingClassNameUpdated(OpenDefinitionsDocument doc, String old, String updated) {
-//              if (doc == _model.getActiveDocument()) { updateStatusField(); }
-//            }
-//          });
-//        }
-//        _model.getParsingControl().reset();
-//        _model.getParsingControl().setAutomaticUpdates(oce.value);
-//        updateStatusField();
-//      }
-//    };
-//    DrJava.getConfig().addOptionListener(LIGHTWEIGHT_PARSING_ENABLED, parsingEnabledListener);
-//    parsingEnabledListener.
-//      optionChanged(new OptionEvent<Boolean>(LIGHTWEIGHT_PARSING_ENABLED, 
-//                                             DrJava.getConfig().
-//                                               getSetting(LIGHTWEIGHT_PARSING_ENABLED).booleanValue()));
-//    
-//      _log.log("Global Model started");
-      
+
       _model.getDocumentNavigator().asContainer().addKeyListener(_historyListener);
       _model.getDocumentNavigator().asContainer().addFocusListener(_focusListenerForRecentDocs);
       
@@ -8088,38 +8065,6 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
         }
       }
     });
-//    _model.getDocCollectionWidget().addMouseListener(new RightClickMouseAdapter() {
-//      protected void _popupAction(MouseEvent e) {
-//        if (_model.getDocumentNavigator().selectDocumentAt(e.getX(), e.getY())) {
-//          if (_model.getDocumentNavigator().isGroupSelected())
-//            _navPaneFolderPopupMenu.show(e.getComponent(), e.getX(), e.getY());
-//          
-//          else {
-//            try {
-//              String groupName = _model.getDocumentNavigator().getNameOfSelectedTopLevelGroup();
-//              if (groupName.equals(_model.getSourceBinTitle()))
-//                _navPanePopupMenu.show(e.getComponent(), e.getX(), e.getY());
-//              else if (groupName.equals(_model.getExternalBinTitle())) {
-//                INavigatorItem n = _model.getDocumentNavigator().getCurrent();
-//                if (n != null) {
-//                  OpenDefinitionsDocument d = (OpenDefinitionsDocument) n;
-//                  if (d.isUntitled()) { _navPanePopupMenu.show(e.getComponent(), e.getX(), e.getY()); }
-//                  else _navPanePopupMenuForExternal.show(e.getComponent(), e.getX(), e.getY());
-//                }
-//              }
-//              else if (groupName.equals(_model.getAuxiliaryBinTitle()))
-//                _navPanePopupMenuForAuxiliary.show(e.getComponent(), e.getX(), e.getY());
-//            }
-//            catch(GroupNotSelectedException ex) {
-//              // we're looking at the root of the tree, or we're in list view...
-//              if (_model.isProjectActive())
-//                _navPanePopupMenuForRoot.show(e.getComponent(), e.getX(), e.getY());
-//              else  _navPanePopupMenu.show(e.getComponent(), e.getX(), e.getY());
-//            }
-//          }
-//        }
-//      }
-//    });
     
     // Interactions pane menu
     _interactionsPanePopupMenu = new JPopupMenu();
@@ -8147,13 +8092,7 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
         _interactionsPanePopupMenu.show(e.getComponent(), e.getX(), e.getY());
       }
     });
-    
-//// This listener updates the _cachedCaretPosition in the _interactionsController when the cursor is manually set.
-//    _interactionsPane.addMouseListener(new MouseInputAdapter() {
-//      public void mouseClicked(MouseEvent e) { 
-//        _interactionsController.setCachedCaretPos(_interactionsPane.viewToModel(e.getPoint()));
-//      }
-//    });
+
     _consolePanePopupMenu = new JPopupMenu();
     _consolePanePopupMenu.add(_clearConsoleAction);
     _consolePanePopupMenu.add(_saveConsoleCopyAction);
@@ -8202,144 +8141,38 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
   public static long UPDATE_DELAY = 500L;  // update delay threshold in milliseconds
   public static int UPDATER_PRIORITY = 2;   // priority in [1..10] of the updater thread.
   
-//  /** Updates the tabbed panel in a granular fashion to avoid swamping the event thread.  */
-//  public void updateTabbedPane() {
-//    if (_tabUpdatePending) return;
-//    _tabUpdatePending = true;
-//    Thread updater = new Thread(new Runnable() {
-//      public void run() {
-//        synchronized(_updateLock) { 
-//          try { _updateLock.wait(UPDATE_DELAY); } 
-//          catch(InterruptedException e) { /* fall through */ }
-//        }
-//        EventQueue.invokeLater(new Runnable() { 
-//          public void run() {
-//            _tabUpdatePending = false;
-//            _tabbedPane.getSelectedComponent().repaint();
-//          }
-//        });
-//      }
-//    });
-//    updater.start();
-//  }
-  
   private static boolean isDisplayed(TabbedPanel p) { return p != null && p.isDisplayed(); }
+  // _createDefScrollPane 5 times used
+  
+  
   
   /** Create new DefinitionsPane and JScrollPane for an open definitions document.  Package private for testing purposes.
     * @param doc The open definitions document to wrap
     * @return JScrollPane containing a DefinitionsPane for the given document.
-    */
+  */
   JScrollPane _createDefScrollPane(OpenDefinitionsDocument doc) {
     DefinitionsPane pane = new DefinitionsPane(this, doc);
-    
     pane.addKeyListener(_historyListener);
     pane.addFocusListener(_focusListenerForRecentDocs);
-    
     // Add listeners
     _installNewDocumentListener(doc);
     ErrorCaretListener caretListener = new ErrorCaretListener(doc, pane, this);
     pane.addErrorCaretListener(caretListener);
-    
+    /*
+      didalam addDocumentListener ada
+      1. updateUI
+      2. reloadPanel
+    */
     doc.addDocumentListener(new DocumentUIListener() {
       /** Updates panel displayed in interactions subwindow. */
-      private void updateUI(OpenDefinitionsDocument doc, int offset) {
+      private void updateUI(OpenDefin itionsDocument doc, int offset) {
         assert EventQueue.isDispatchThread();
-//        System.err.println("updateUI(" + doc + ", " + offset + ")");
-        
         Component c = _tabbedPane.getSelectedComponent();
         if (c instanceof RegionsTreePanel<?>) {
           reloadPanel((RegionsTreePanel<?>) c, doc, offset);
         }
-        
-//        _lastChangeTime = System.currentTimeMillis();  // TODO: what about changes to file names?
       }
-      
-      // coarsely update the displayed RegionsTreePanel
-      private <R extends OrderedDocumentRegion> void reloadPanel(final RegionsTreePanel<R> p,
-                                                                 final OpenDefinitionsDocument doc,
-                                                                 int offset) {
-        
-        final RegionManager<R> rm = p.getRegionManager();
-        SortedSet<R> regions = rm.getRegions(doc);
-        if (regions == null || regions.size() == 0) return;
-        
-        // Adjust line numbers and line bounds if insert involves newline
-        final int numLinesChangedAfter = doc.getDocument().getAndResetNumLinesChangedAfter();
-        
-        // interval regions that need line number updating
-        Pair<R, R> lineNumInterval = null;
-        
-        if (numLinesChangedAfter >= 0)  {  // insertion/deletion included a newline
-          // Update the bounds of the affected regions
-          
-          // TODO: These casts are bad!  R is not always StaticDocumentRegion (of course).
-          // The code only works because the RegionManager implementations happen to not strictly
-          // require values of type R.  Either the interface for RegionManager.updateLines()
-          // and RegionManager.reload() needs to be generalized, or a means for creating
-          // values that are truly of type R needs to be provided.
-          @SuppressWarnings("unchecked") R start =
-          (R) new StaticDocumentRegion(doc, numLinesChangedAfter, numLinesChangedAfter);
-          int len = doc.getLength();
-          @SuppressWarnings("unchecked") R end = (R) new StaticDocumentRegion(doc, len, len);
-          lineNumInterval = Pair.make(start, end); 
-        }
-        
-        Pair<R, R> interval = rm.getRegionInterval(doc, offset);
-        if (interval == null && lineNumInterval == null) return;
-        
-        interval = maxInterval(lineNumInterval, interval);
-        
-        final R first = interval.first();
-        final R last = interval.second();
-        
-        synchronized(_updateLock) {
-          if (_tabUpdatePending && _pendingDocument == doc) {  // revise and delay existing task
-            _firstRegion = _firstRegion.compareTo(first) <= 0 ? _firstRegion : first;
-            _lastRegion = _lastRegion.compareTo(last) >= 0 ? _lastRegion : last;
-            _waitAgain = true;
-            return;
-          }
-          else {  // create a new update task
-            _firstRegion = first;
-            _lastRegion = last;
-            _pendingDocument = doc;
-            _tabUpdatePending = true;
-            _pendingUpdate = new Runnable() { // this Runnable only runs in the event thread
-              public void run() {
-                // TODO: Bad casts!  There's probably no guarantee that R is consistent between invocations,
-                // and even if there were, this is a confusing way to go about this process.
-                // See above discussion for alternatives.
-                @SuppressWarnings("unchecked") R first = (R) _firstRegion;
-                @SuppressWarnings("unchecked") R last = (R) _lastRegion;
-                rm.updateLines(first, last); // recompute _lineStartPos, _lineEndPos in affected regions
-                p.reload(first, last);  // reload the entries whose length may have changed
-                p.repaint();
-              }
-            };  // end _pendingUpdate Runnable
-          }
-        }
-        // Queue a request to perform the update
-        
-        // Create and run a new aynchronous task      that waits UPDATE_DELAY millis, then performs update in event thread
-        _threadPool.submit(new Runnable() {
-          public void run() {
-            Thread.currentThread().setPriority(UPDATER_PRIORITY);
-            synchronized(_updateLock) {
-              try { // _pendingUpdate can be updated during waits
-                do { 
-                  _waitAgain = false;
-                  _updateLock.wait(UPDATE_DELAY); 
-                } 
-                while (_waitAgain);
-              }
-              catch(InterruptedException e) { /* fall through */ }
-              _tabUpdatePending = false;
-            } // end synchronized
-            Utilities.invokeLater(_pendingUpdate);
-          }
-        });
-      }
-      
+
       public void changedUpdate(DocumentEvent e) { }
       public void insertUpdate(DocumentEvent e) {
         updateUI(((DefinitionsDocument) e.getDocument()).getOpenDefDoc(), e.getOffset()); 
@@ -8357,20 +8190,107 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
     
     // Add to a scroll pane
     final JScrollPane scroll = 
-      new BorderlessScrollPane(pane, ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED, 
-                               ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+      new BorderlessScrollPane(pane,
+              ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+              ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
+      );
     pane.setScrollPane(scroll);
     //scroll.setBorder(null); // removes all default borders (MacOS X installs default borders)
-    
     if (DrJava.getConfig().getSetting(LINEENUM_ENABLED).booleanValue()) {
       scroll.setRowHeaderView(new LineEnumRule(pane));
     }
-    
     _defScrollPanes.put(doc, scroll);
-    
     return scroll;
   }
-  
+  // coarsely update the displayed RegionsTreePanel
+  private <R extends OrderedDocumentRegion> void reloadPanel(final RegionsTreePanel<R> p,
+                                                             final OpenDefinitionsDocument doc,
+                                                             int offset)
+  {
+    final RegionManager<R> rm = p.getRegionManager();
+    SortedSet<R> regions = rm.getRegions(doc);
+    if (regions == null || regions.size() == 0) return;
+    // Adjust line numbers and line bounds if insert involves newline
+    final int numLinesChangedAfter = doc.getDocument().getAndResetNumLinesChangedAfter();
+    // interval regions that need line number updating
+    Pair<R, R> lineNumInterval = null;
+    if (numLinesChangedAfter >= 0)  {
+      // insertion/deletion included a newline
+      // Update the bounds of the affected regions
+      // TODO: These casts are bad! R is not always StaticDocumentRegion (of course).
+      // The code only works because the RegionManager implementations happen to not strictly
+      // require values of type R.  Either the interface for RegionManager.updateLines()
+      // and RegionManager.reload() needs to be generalized, or a means for creating
+      // values that are truly of type R needs to be provided.
+      @SuppressWarnings("unchecked") R start =
+              (R) new StaticDocumentRegion(doc, numLinesChangedAfter, numLinesChangedAfter);
+      int len = doc.getLength();
+      @SuppressWarnings("unchecked") R end = (R) new StaticDocumentRegion(doc, len, len);
+      lineNumInterval = Pair.make(start, end);
+    }
+
+    Pair<R, R> interval = rm.getRegionInterval(doc, offset);
+    if (interval == null && lineNumInterval == null) return;
+    interval = maxInterval(lineNumInterval, interval);
+
+    if (setRegion(p, doc, rm)) return;
+    // Queue a request to perform the update
+
+    updateMillis();
+  }
+  private void updateMillis() {
+    _threadPool.submit(new Runnable() {
+      // Create and run a new aynchronous task that waits UPDATE_DELAY millis, then performs update in event thread
+      public void run() {
+        Thread.currentThread().setPriority(UPDATER_PRIORITY);
+        synchronized(_updateLock) {
+          try { // _pendingUpdate can be updated during waits
+            do {
+              _waitAgain = false;
+              _updateLock.wait(UPDATE_DELAY);
+            }
+            while (_waitAgain);
+          }
+          catch(InterruptedException e) { /* fall through */ }
+          _tabUpdatePending = false;
+        } // end synchronized
+        Utilities.invokeLater(_pendingUpdate);
+      }
+    });
+  }
+
+  private <R extends OrderedDocumentRegion> boolean setRegion(final RegionsTreePanel<R> p, OpenDefinitionsDocument doc, final RegionManager<R> rm) {
+    final R first = interval.first();
+    final R last = interval.second();
+
+    synchronized(_updateLock) {
+      if (_tabUpdatePending && _pendingDocument == doc) {  // revise and delay existing task
+        _firstRegion = _firstRegion.compareTo(first) <= 0 ? _firstRegion : first;
+        _lastRegion = _lastRegion.compareTo(last) >= 0 ? _lastRegion : last;
+        _waitAgain = true;
+        return true;
+      } else {  // create a new update task
+        _firstRegion = first;
+        _lastRegion = last;
+        _pendingDocument = doc;
+        _tabUpdatePending = true;
+        _pendingUpdate = new Runnable() { // this Runnable only runs in the event thread
+          public void run() {
+            // TODO: Bad casts!  There's probably no guarantee that R is consistent between invocations,
+            // and even if there were, this is a confusing way to go about this process.
+            // See above discussion for alternatives.
+            @SuppressWarnings("unchecked") R first = (R) _firstRegion;
+            @SuppressWarnings("unchecked") R last = (R) _lastRegion;
+            rm.updateLines(first, last); // recompute _lineStartPos, _lineEndPos in affected regions
+            p.reload(first, last);  // reload the entries whose length may have changed
+            p.repaint();
+          }
+        };  // end _pendingUpdate Runnable
+      }
+    }
+    return false;
+  }
+
   private static <R extends OrderedDocumentRegion> Pair<R, R> maxInterval(Pair<R, R> i, Pair<R, R> j) {
     if (i == null) return j;
     if (j == null) return i;
