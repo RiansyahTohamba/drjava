@@ -1,0 +1,37 @@
+# range kelas berikut berada di 8.875 -10
+
+# nanti create dari terminal saja
+
+# mainframe::_storePositionInfo = 8.875
+# mainframe::_createDefScrollPane = 8.875
+# javadocEnded = 10
+# mainframe.MainFrame.reloadPanel = 8.875
+# ExecuteExternalDialog::makeCommandPane = ?
+# ErrorPanel.ErrorListPane::ErrorListPane = ?
+# DrJavaPropertySetup::setup
+# AutoCompletePopup::createCompleteWordDialog = 8.875
+# AbstractConsoleController::_setupView()
+
+
+kode ini sudah sy eksekusi, 
+sekarang tinggal isi file-file nya dengan kode yg sesuai
+
+
+# ubah jadi sh jika ingin eksekusi
+# touch isolated/mainframe/_storePositionInfo.java
+# touch isolated/mainframe/_createDefScrollPane.java
+# touch isolated/mainframe/ModelListener_javadocEnded.java
+# touch isolated/mainframe/reloadPanel.java
+# # MainFrame$240 untuk reloadPanel?
+# touch isolated/mainframe/_setUpTabs.java
+# touch isolated/mainframe/_initGotoFileDialog.java
+# touch isolated/mainframe/setUpDrJavaProperties.java
+# touch isolated/makeCommandPane.java
+# touch isolated/ErrorListPane.java
+# touch isolated/DrJavaPropertySetup.java
+# touch isolated/createCompleteWordDialog.java
+# touch isolated/_setupView.java
+
+
+
+
