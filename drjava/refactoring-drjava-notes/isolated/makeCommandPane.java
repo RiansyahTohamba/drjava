@@ -1,6 +1,6 @@
 // read makeCommandPane.md
 class ExecuteExternalDialog{
-
+	// makeCommandPane depend on setFocusListener, getBottom, getMain
 	private JPanel makeCommandPane() {
 		JPanel panel = new JPanel(new BorderLayout());
 		JPanel main = getMain();
@@ -10,7 +10,7 @@ class ExecuteExternalDialog{
 		return panel;
 	}
 
-	void setFocusListener(){
+	private void setFocusListener(){
 		// update the preview of the actual command line post substitution
 		_documentListener = new DocumentListener() {
 		  public void update(DocumentEvent e) {
@@ -129,7 +129,7 @@ class ExecuteExternalDialog{
 		});
 	}
 
-	JPanel getBottom(){
+	private JPanel getBottom(){
 		JPanel bottom = new JPanel();
 		bottom.setBorder(new EmptyBorder(5, 5, 5, 5));
 		bottom.setLayout(new BoxLayout(bottom, BoxLayout.X_AXIS));
@@ -144,7 +144,7 @@ class ExecuteExternalDialog{
 		return bottom;
 	}
 
-	JPanel getMain(){
+	private JPanel getMain(){
 		GridBagLayout gridbag = new GridBagLayout();
 		JPanel main = new JPanel(gridbag);
 		main.setLayout(gridbag);
