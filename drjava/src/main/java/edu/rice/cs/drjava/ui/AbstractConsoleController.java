@@ -130,47 +130,54 @@ public abstract class AbstractConsoleController /* implements Serializable */ {
   protected abstract void _setupModel();
   
   /** Sets up the view. */
-  protected void _setupView() {
-    _pane.addActionForKeyStroke(DrJava.getConfig().getSetting(OptionConstants.KEY_BEGIN_LINE), gotoPromptPosAction);
-    _pane.addActionForKeyStroke(DrJava.getConfig().getSetting(OptionConstants.KEY_BEGIN_LINE_SELECT), selectToPromptPosAction);
-    _pane.addActionForKeyStroke(DrJava.getConfig().getSetting(OptionConstants.KEY_END_LINE), gotoEndAction);
-    _pane.addActionForKeyStroke(DrJava.getConfig().getSetting(OptionConstants.KEY_END_LINE_SELECT), selectToEndAction);
+  TipenyaApa getSetting(params){
+    return DrJava.getConfig().getSetting(params);
+ }
 
-    DrJava.getConfig().addOptionListener(OptionConstants.KEY_BEGIN_LINE, new OptionListener<Vector<KeyStroke>>() {
+ TipenyaApa getConfig(){
+  return DrJava.getConfig();
+ }
+
+ protected void _setupView() {
+    _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_BEGIN_LINE), gotoPromptPosAction);
+    _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_BEGIN_LINE_SELECT), selectToPromptPosAction);
+    _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_END_LINE), gotoEndAction);
+    _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_END_LINE_SELECT), selectToEndAction);
+
+    getConfig().addOptionListener(OptionConstants.KEY_BEGIN_LINE, new OptionListener<Vector<KeyStroke>>() {
       public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
         _pane.addActionForKeyStroke(oe.value, gotoPromptPosAction);
       }
     });
-    DrJava.getConfig().addOptionListener(OptionConstants.KEY_BEGIN_LINE_SELECT, new OptionListener<Vector<KeyStroke>>() {
+    getConfig().addOptionListener(OptionConstants.KEY_BEGIN_LINE_SELECT, new OptionListener<Vector<KeyStroke>>() {
       public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
         _pane.addActionForKeyStroke(oe.value, selectToPromptPosAction);
      }
     });
-    DrJava.getConfig().addOptionListener(OptionConstants.KEY_END_LINE, new OptionListener<Vector<KeyStroke>>() {
+    getConfig().addOptionListener(OptionConstants.KEY_END_LINE, new OptionListener<Vector<KeyStroke>>() {
       public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
         _pane.addActionForKeyStroke(oe.value, gotoEndAction);
      }
     });
-    DrJava.getConfig().addOptionListener(OptionConstants.KEY_END_LINE_SELECT, new OptionListener<Vector<KeyStroke>>() {
+    getConfig().addOptionListener(OptionConstants.KEY_END_LINE_SELECT, new OptionListener<Vector<KeyStroke>>() {
       public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
         _pane.addActionForKeyStroke(oe.value, selectToEndAction);
      }
     });
     
-    _pane.addActionForKeyStroke(DrJava.getConfig().getSetting(OptionConstants.KEY_CUT), cutAction);
-    _pane.addActionForKeyStroke(DrJava.getConfig().getSetting(OptionConstants.KEY_COPY), copyAction);
-    DrJava.getConfig().addOptionListener(OptionConstants.KEY_CUT, new OptionListener<Vector<KeyStroke>>() {
+    _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_CUT), cutAction);
+    _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_COPY), copyAction);
+    getConfig().addOptionListener(OptionConstants.KEY_CUT, new OptionListener<Vector<KeyStroke>>() {
       public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
-        _pane.addActionForKeyStroke(DrJava.getConfig().getSetting(OptionConstants.KEY_CUT), cutAction);
+        _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_CUT), cutAction);
      }
     });
-    DrJava.getConfig().addOptionListener(OptionConstants.KEY_COPY, new OptionListener<Vector<KeyStroke>>() {
+    getConfig().addOptionListener(OptionConstants.KEY_COPY, new OptionListener<Vector<KeyStroke>>() {
       public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
-        _pane.addActionForKeyStroke(DrJava.getConfig().getSetting(OptionConstants.KEY_COPY), copyAction);
+        _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_COPY), copyAction);
      }
     });
   }
-  
   /** Clears and resets the view (other than features derived from the model. */
   public void resetView() {
 //    _pane.resetPrompts();  // NOT USED
