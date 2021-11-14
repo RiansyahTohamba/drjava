@@ -341,80 +341,82 @@ public abstract class ErrorPanel extends TabbedPanel implements OptionConstants 
     
     /** Constructs the CompilerErrorListPane.*/
     public ErrorListPane() {
-//      // If we set this pane to be of type text/rtf, it wraps based on words
+      //      // If we set this pane to be of type text/rtf, it wraps based on words
 //      // as opposed to based on characters.
-      
-      setContentType("text/rtf");
-      setDocument(new ErrorDocument(getErrorDocumentTitle()));
-      setHighlighter(new ReverseHighlighter());
-      
-      addMouseListener(defaultMouseListener);
-      
-      _selectedIndex = 0;
-      _errorListPositions = new Position[0];
+    // 3 extract method: addOptionListener, setColors, getConfig
+
+    public ErrorListPane() {
+        setContentType("text/rtf");
+        setDocument(new ErrorDocument(getErrorDocumentTitle()));
+        setHighlighter(new ReverseHighlighter());
         
-      this.setFont(new Font("Courier", 0, 20));
-      
-      // We set the editor pane disabled so it won't get keyboard focus,
-      // which makes it uneditable, and so you can't select text inside it.
-      //setEnabled(false);
-      
-      // Set the editor pane to be uneditable, but allow selecting text.
-      setEditable(false);
-      
-      DrJava.getConfig().addOptionListener(COMPILER_ERROR_COLOR, new CompilerErrorColorOptionListener());
-      
-      // Set the colors.
-      StyleConstants.setForeground(NORMAL_ATTRIBUTES, DrJava.getConfig().getSetting(DEFINITIONS_NORMAL_COLOR));
-      StyleConstants.setForeground(BOLD_ATTRIBUTES, DrJava.getConfig().getSetting(DEFINITIONS_NORMAL_COLOR));
-      setBackground(DrJava.getConfig().getSetting(DEFINITIONS_BACKGROUND_COLOR));
-      
+        addMouseListener(defaultMouseListener);
+        
+        _selectedIndex = 0;
+        _errorListPositions = new Position[0];
+          
+        this.setFont(new Font("Courier", 0, 20));
+        setEditable(false);
+        
+        getConfig().addOptionListener(COMPILER_ERROR_COLOR, new CompilerErrorColorOptionListener());
+        
+        // Set the colors.
+      setColors();
+
       // Add OptionListeners for the colors.
-      DrJava.getConfig().addOptionListener(DEFINITIONS_NORMAL_COLOR, new ForegroundColorListener());
-      DrJava.getConfig().addOptionListener(DEFINITIONS_BACKGROUND_COLOR, new BackgroundColorListener());
-      
-      /* Item listener instead of change listener so that this code won't be called (twice) every time the mouse moves
-       * over the _showHighlightsCheckBox (5/26/05)
-       */
-      _showHighlightsCheckBox.addItemListener(new ItemListener() {
-        public void itemStateChanged(ItemEvent e) {
-          DefinitionsPane lastDefPane = _frame.getCurrentDefPane();
-          
-          if (e.getStateChange() == ItemEvent.DESELECTED) {
-            lastDefPane.removeErrorHighlight();
+        getConfig().addOptionListener(DEFINITIONS_NORMAL_COLOR, new ForegroundColorListener());
+        getConfig().addOptionListener(DEFINITIONS_BACKGROUND_COLOR, new BackgroundColorListener());
+        
+        /* Item listener instead of change listener so that this code won't be called (twice) every time the mouse moves
+         * over the _showHighlightsCheckBox (5/26/05)
+         */
+        _showHighlightsCheckBox.addItemListener(new ItemListener() {
+          public void itemStateChanged(ItemEvent e) {
+            DefinitionsPane lastDefPane = _frame.getCurrentDefPane();
+            
+            if (e.getStateChange() == ItemEvent.DESELECTED) {
+              lastDefPane.removeErrorHighlight();
+            } else if (e.getStateChange() == ItemEvent.SELECTED) {   
+              getErrorListPane().switchToError(getSelectedIndex());
+            }
           }
-          
-          else if (e.getStateChange() == ItemEvent.SELECTED) {   
-            getErrorListPane().switchToError(getSelectedIndex());
-// Commented out because they are redudant; done in switchToError(...)            
-//          DefinitionsPane curDefPane = _frame.getCurrentDefPane(); 
-//            lastDefPane.requestFocusInWindow();
-//            lastDefPane.getCaret().setVisible(true);
-          }
+        });
+        
+        _keymap = addKeymap("ERRORLIST_KEYMAP", getKeymap());
+        
+        addActionForKeyStroke(getConfig().getSetting(OptionConstants.KEY_CUT), cutAction);
+        addActionForKeyStroke(getConfig().getSetting(OptionConstants.KEY_COPY), copyAction);
+        addActionForKeyStroke(getConfig().getSetting(OptionConstants.KEY_PASTE_FROM_HISTORY), pasteAction);
+
+      addOptionListener();
+    }
+    private void addOptionListener() {
+      getConfig().addOptionListener(OptionConstants.KEY_CUT, new OptionListener<Vector<KeyStroke>>() {
+        public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
+        addActionForKeyStroke(getConfig().getSetting(OptionConstants.KEY_CUT), cutAction);
         }
       });
-      
-      _keymap = addKeymap("ERRORLIST_KEYMAP", getKeymap());
-      
-      addActionForKeyStroke(DrJava.getConfig().getSetting(OptionConstants.KEY_CUT), cutAction);
-      addActionForKeyStroke(DrJava.getConfig().getSetting(OptionConstants.KEY_COPY), copyAction);
-      addActionForKeyStroke(DrJava.getConfig().getSetting(OptionConstants.KEY_PASTE_FROM_HISTORY), pasteAction);
-      DrJava.getConfig().addOptionListener(OptionConstants.KEY_CUT, new OptionListener<Vector<KeyStroke>>() {
+      getConfig().addOptionListener(OptionConstants.KEY_COPY, new OptionListener<Vector<KeyStroke>>() {
         public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
-          addActionForKeyStroke(DrJava.getConfig().getSetting(OptionConstants.KEY_CUT), cutAction);
+        addActionForKeyStroke(getConfig().getSetting(OptionConstants.KEY_COPY), copyAction);
         }
       });
-      DrJava.getConfig().addOptionListener(OptionConstants.KEY_COPY, new OptionListener<Vector<KeyStroke>>() {
+      getConfig().addOptionListener(OptionConstants.KEY_PASTE_FROM_HISTORY, new OptionListener<Vector<KeyStroke>>() {
         public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
-          addActionForKeyStroke(DrJava.getConfig().getSetting(OptionConstants.KEY_COPY), copyAction);
-        }
-      });
-      DrJava.getConfig().addOptionListener(OptionConstants.KEY_PASTE_FROM_HISTORY, new OptionListener<Vector<KeyStroke>>() {
-        public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
-          addActionForKeyStroke(DrJava.getConfig().getSetting(OptionConstants.KEY_PASTE_FROM_HISTORY), pasteAction);
+        addActionForKeyStroke(getConfig().getSetting(OptionConstants.KEY_PASTE_FROM_HISTORY), pasteAction);
         }
       });
     }
+    private void setColors() {
+      StyleConstants.setForeground(NORMAL_ATTRIBUTES, getConfig().getSetting(DEFINITIONS_NORMAL_COLOR));
+      StyleConstants.setForeground(BOLD_ATTRIBUTES, getConfig().getSetting(DEFINITIONS_NORMAL_COLOR));
+      setBackground(getConfig().getSetting(DEFINITIONS_BACKGROUND_COLOR));
+    }
+    private FileConfiguration getConfig(){
+        return DrJssava.getConfig();
+      }
+    }
+
     
     /** Gets the ErrorDocument associated with this ErrorListPane.
      * The inherited getDocument method must be preserved because the 
