@@ -37,9 +37,7 @@ import javax.swing.text.*;
 import java.util.Vector;
 
 import edu.rice.cs.drjava.DrJava;
-import edu.rice.cs.drjava.config.OptionConstants;
-import edu.rice.cs.drjava.config.OptionListener;
-import edu.rice.cs.drjava.config.OptionEvent;
+import edu.rice.cs.drjava.config.*;
 import edu.rice.cs.drjava.model.repl.*;
 import edu.rice.cs.drjava.model.ClipboardHistoryModel;
 import edu.rice.cs.util.text.ConsoleDocument;
@@ -130,55 +128,55 @@ public abstract class AbstractConsoleController /* implements Serializable */ {
   protected abstract void _setupModel();
   
   /** Sets up the view. */
-  TipenyaApa getSetting(params){
-    return DrJava.getConfig().getSetting(params);
- }
+  protected void _setupView() {
+      _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_BEGIN_LINE), gotoPromptPosAction);
+      _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_BEGIN_LINE_SELECT), selectToPromptPosAction);
+      _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_END_LINE), gotoEndAction);
+      _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_END_LINE_SELECT), selectToEndAction);
 
- TipenyaApa getConfig(){
-  return DrJava.getConfig();
- }
+      getConfig().addOptionListener(OptionConstants.KEY_BEGIN_LINE, new OptionListener<Vector<KeyStroke>>() {
+          public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
+              _pane.addActionForKeyStroke(oe.value, gotoPromptPosAction);
+          }
+      });
+      getConfig().addOptionListener(OptionConstants.KEY_BEGIN_LINE_SELECT, new OptionListener<Vector<KeyStroke>>() {
+          public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
+              _pane.addActionForKeyStroke(oe.value, selectToPromptPosAction);
+          }
+      });
+      getConfig().addOptionListener(OptionConstants.KEY_END_LINE, new OptionListener<Vector<KeyStroke>>() {
+          public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
+              _pane.addActionForKeyStroke(oe.value, gotoEndAction);
+          }
+      });
+      getConfig().addOptionListener(OptionConstants.KEY_END_LINE_SELECT, new OptionListener<Vector<KeyStroke>>() {
+          public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
+              _pane.addActionForKeyStroke(oe.value, selectToEndAction);
+          }
+      });
 
- protected void _setupView() {
-    _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_BEGIN_LINE), gotoPromptPosAction);
-    _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_BEGIN_LINE_SELECT), selectToPromptPosAction);
-    _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_END_LINE), gotoEndAction);
-    _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_END_LINE_SELECT), selectToEndAction);
-
-    getConfig().addOptionListener(OptionConstants.KEY_BEGIN_LINE, new OptionListener<Vector<KeyStroke>>() {
-      public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
-        _pane.addActionForKeyStroke(oe.value, gotoPromptPosAction);
-      }
-    });
-    getConfig().addOptionListener(OptionConstants.KEY_BEGIN_LINE_SELECT, new OptionListener<Vector<KeyStroke>>() {
-      public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
-        _pane.addActionForKeyStroke(oe.value, selectToPromptPosAction);
-     }
-    });
-    getConfig().addOptionListener(OptionConstants.KEY_END_LINE, new OptionListener<Vector<KeyStroke>>() {
-      public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
-        _pane.addActionForKeyStroke(oe.value, gotoEndAction);
-     }
-    });
-    getConfig().addOptionListener(OptionConstants.KEY_END_LINE_SELECT, new OptionListener<Vector<KeyStroke>>() {
-      public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
-        _pane.addActionForKeyStroke(oe.value, selectToEndAction);
-     }
-    });
-    
-    _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_CUT), cutAction);
-    _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_COPY), copyAction);
-    getConfig().addOptionListener(OptionConstants.KEY_CUT, new OptionListener<Vector<KeyStroke>>() {
-      public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
-        _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_CUT), cutAction);
-     }
-    });
-    getConfig().addOptionListener(OptionConstants.KEY_COPY, new OptionListener<Vector<KeyStroke>>() {
-      public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
-        _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_COPY), copyAction);
-     }
-    });
+      _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_CUT), cutAction);
+      _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_COPY), copyAction);
+      getConfig().addOptionListener(OptionConstants.KEY_CUT, new OptionListener<Vector<KeyStroke>>() {
+          public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
+              _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_CUT), cutAction);
+          }
+      });
+      getConfig().addOptionListener(OptionConstants.KEY_COPY, new OptionListener<Vector<KeyStroke>>() {
+          public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
+              _pane.addActionForKeyStroke(getSetting(OptionConstants.KEY_COPY), copyAction);
+          }
+      });
   }
-  /** Clears and resets the view (other than features derived from the model. */
+
+    private Vector<KeyStroke> getSetting(VectorOption<KeyStroke> key) {
+        return DrJava.getConfig().getSetting(key);
+    }
+
+    private FileConfiguration getConfig(){
+        return DrJava.getConfig();
+    }
+    /** Clears and resets the view (other than features derived from the model. */
   public void resetView() {
 //    _pane.resetPrompts();  // NOT USED
 //    System.err.println("Prompts.reset" + "Prompts for pane " + _pane.hashCode() + " is " + _pane.getPromptList());
