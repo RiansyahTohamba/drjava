@@ -45,7 +45,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -89,8 +88,6 @@ import edu.rice.cs.drjava.ui.coverage.CoverageFrame;
 import edu.rice.cs.drjava.ui.predictive.PredictiveInputFrame;
 import edu.rice.cs.drjava.ui.predictive.PredictiveInputModel;
 import edu.rice.cs.drjava.ui.avail.*;
-import edu.rice.cs.drjava.ui.ClipboardHistoryFrame;
-import edu.rice.cs.drjava.ui.RegionsTreePanel;
 import edu.rice.cs.drjava.project.*;
 import edu.rice.cs.plt.concurrent.JVMBuilder;
 import edu.rice.cs.plt.io.IOUtil;
@@ -122,8 +119,6 @@ import static edu.rice.cs.drjava.ui.RecentFileManager.*;
 import static edu.rice.cs.drjava.ui.predictive.PredictiveInputModel.*;
 import static edu.rice.cs.util.XMLConfig.XMLConfigException;
 import static edu.rice.cs.drjava.ui.MainFrameStatics.*;
-
-import edu.rice.cs.drjava.model.junit.JUnitResultTuple;
 
 /** DrJava's main window. */
 public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetListener {
@@ -1463,7 +1458,6 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
               catch(IOException e) { sb.append(doc.getFile()); }
             }
             catch(FileMovedException e) { sb.append(entry + " was moved"); }
-//            catch(java.lang.IllegalStateException e) { sb.append(entry); }
             catch(InvalidPackageException e) { sb.append(entry); }
           } 
           else sb.append(entry);
@@ -5577,10 +5571,97 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
   /** Stores the current position and size info for window and panes to the config framework. Only runs in the event 
     * thread. 
     */
+//  7x extract method: _storePositionInfo
   private void _storePositionInfo() {
     assert EventQueue.isDispatchThread();
     Configuration config = DrJava.getConfig();
-    
+    config = getWindowBound(config);
+    config = getDialogPosition(config);
+    config = getJavaDocDialog(config);
+    config = completeWord(config);
+    config = getJarDialogPosition(config);
+    config = getTabPanePosition(config);
+    config = getDebuggerPosition(config);
+
+    // Panel heights.
+    if (_showDebugger) config.setSetting(DEBUG_PANEL_HEIGHT, Integer.valueOf(_debugPanel.getHeight()));
+    // Doc list width.
+    config.setSetting(DOC_LIST_WIDTH, Integer.valueOf(_docSplitPane.getDividerLocation()));
+  }
+
+  private Configuration getJarDialogPosition(Configuration config) {
+    // "Create Jar from Project" dialog position and size.
+    if ((DrJava.getConfig().getSetting(DIALOG_JAROPTIONS_STORE_POSITION).booleanValue())
+            && (_jarOptionsDialog != null) && (_jarOptionsDialog.getFrameState() != null)) {
+      config.setSetting(DIALOG_JAROPTIONS_STATE, (_jarOptionsDialog.getFrameState().toString()));
+    } else {
+      // Reset to defaults to restore pristine behavior.
+      config.setSetting(DIALOG_JAROPTIONS_STATE, DIALOG_JAROPTIONS_STATE.getDefault());
+    }
+    return config;
+  }
+
+  private Configuration getTabPanePosition(Configuration config) {
+    // "Tabbed Panes" frame position and size.
+    if ((DrJava.getConfig().getSetting(DIALOG_TABBEDPANES_STORE_POSITION).booleanValue())
+            && (_tabbedPanesFrame != null) && (_tabbedPanesFrame.getFrameState() != null)) {
+      config.setSetting(DIALOG_TABBEDPANES_STATE, (_tabbedPanesFrame.getFrameState().toString()));
+    } else {
+      // Reset to defaults to restore pristine behavior.
+      config.setSetting(DIALOG_TABBEDPANES_STATE, DIALOG_TABBEDPANES_STATE.getDefault());
+    }
+    return config;
+  }
+
+  private Configuration getDebuggerPosition(Configuration config) {
+    // "Debugger" frame position and size.
+    if ((DrJava.getConfig().getSetting(DIALOG_DEBUGFRAME_STORE_POSITION).booleanValue())
+            && (_debugFrame != null) && (_debugFrame.getFrameState() != null)) {
+      config.setSetting(DIALOG_DEBUGFRAME_STATE, (_debugFrame.getFrameState().toString()));
+    } else {
+      // Reset to defaults to restore pristine behavior.
+      config.setSetting(DIALOG_DEBUGFRAME_STATE, DIALOG_DEBUGFRAME_STATE.getDefault());
+    }
+    return config;
+  }
+
+  private Configuration completeWord(Configuration config) {
+    // "Complete Word" dialog position and size.
+    if ((DrJava.getConfig().getSetting(DIALOG_COMPLETE_WORD_STORE_POSITION).booleanValue())
+            && (_completeWordDialog != null) && (_completeWordDialog.getFrameState() != null)) {
+      config.setSetting(DIALOG_COMPLETE_WORD_STATE, (_completeWordDialog.getFrameState().toString()));
+    } else {
+      // Reset to defaults to restore pristine behavior.
+      config.setSetting(DIALOG_COMPLETE_WORD_STATE, DIALOG_COMPLETE_WORD_STATE.getDefault());
+    }
+    return config;
+  }
+
+  private Configuration getJavaDocDialog(Configuration config) {
+    // "Open Javadoc" dialog position and size.
+    if ((DrJava.getConfig().getSetting(DIALOG_OPENJAVADOC_STORE_POSITION).booleanValue())
+            && (_openJavadocDialog != null) && (_openJavadocDialog.getFrameState() != null)) {
+      config.setSetting(DIALOG_OPENJAVADOC_STATE, (_openJavadocDialog.getFrameState().toString()));
+    } else {
+      // Reset to defaults to restore pristine behavior.
+      config.setSetting(DIALOG_OPENJAVADOC_STATE, DIALOG_OPENJAVADOC_STATE.getDefault());
+    }
+    return config;
+  }
+
+  private Configuration getDialogPosition(Configuration config) {
+    // "Go to File" dialog position and size.
+    if ((DrJava.getConfig().getSetting(DIALOG_GOTOFILE_STORE_POSITION).booleanValue())
+          && (_gotoFileDialog != null) && (_gotoFileDialog.getFrameState() != null)) {
+      config.setSetting(DIALOG_GOTOFILE_STATE, (_gotoFileDialog.getFrameState().toString()));
+    }else {
+      // Reset to defaults to restore pristine behavior.
+      config.setSetting(DIALOG_GOTOFILE_STATE, DIALOG_GOTOFILE_STATE.getDefault());
+    }
+    return config;
+  }
+
+  private Configuration getWindowBound(Configuration config) {
     // Window bounds.
     if (config.getSetting(WINDOW_STORE_POSITION).booleanValue()) {
       Rectangle bounds = getBounds();
@@ -5589,8 +5670,7 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
       config.setSetting(WINDOW_X, Integer.valueOf(bounds.x));
       config.setSetting(WINDOW_Y, Integer.valueOf(bounds.y));
       config.setSetting(WINDOW_STATE, Integer.valueOf(getExtendedState()));
-    }
-    else {
+    }else {
       // Reset to defaults to restore pristine behavior.
       config.setSetting(WINDOW_HEIGHT, WINDOW_HEIGHT.getDefault());
       config.setSetting(WINDOW_WIDTH, WINDOW_WIDTH.getDefault());
@@ -5598,74 +5678,9 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
       config.setSetting(WINDOW_Y, WINDOW_Y.getDefault());
       config.setSetting(WINDOW_STATE, WINDOW_STATE.getDefault());
     }
-    
-    // "Go to File" dialog position and size.
-    if ((DrJava.getConfig().getSetting(DIALOG_GOTOFILE_STORE_POSITION).booleanValue())
-          && (_gotoFileDialog != null) && (_gotoFileDialog.getFrameState() != null)) {
-      config.setSetting(DIALOG_GOTOFILE_STATE, (_gotoFileDialog.getFrameState().toString()));
-    }
-    else {
-      // Reset to defaults to restore pristine behavior.
-      config.setSetting(DIALOG_GOTOFILE_STATE, DIALOG_GOTOFILE_STATE.getDefault());
-    }
-    
-    // "Open Javadoc" dialog position and size.
-    if ((DrJava.getConfig().getSetting(DIALOG_OPENJAVADOC_STORE_POSITION).booleanValue())
-          && (_openJavadocDialog != null) && (_openJavadocDialog.getFrameState() != null)) {
-      config.setSetting(DIALOG_OPENJAVADOC_STATE, (_openJavadocDialog.getFrameState().toString()));
-    }
-    else {
-      // Reset to defaults to restore pristine behavior.
-      config.setSetting(DIALOG_OPENJAVADOC_STATE, DIALOG_OPENJAVADOC_STATE.getDefault());
-    }    
-    
-    // "Complete Word" dialog position and size.
-    if ((DrJava.getConfig().getSetting(DIALOG_COMPLETE_WORD_STORE_POSITION).booleanValue())
-          && (_completeWordDialog != null) && (_completeWordDialog.getFrameState() != null)) {
-      config.setSetting(DIALOG_COMPLETE_WORD_STATE, (_completeWordDialog.getFrameState().toString()));
-    }
-    else {
-      // Reset to defaults to restore pristine behavior.
-      config.setSetting(DIALOG_COMPLETE_WORD_STATE, DIALOG_COMPLETE_WORD_STATE.getDefault());
-    }
-    
-    // "Create Jar from Project" dialog position and size.   
-    if ((DrJava.getConfig().getSetting(DIALOG_JAROPTIONS_STORE_POSITION).booleanValue())
-          && (_jarOptionsDialog != null) && (_jarOptionsDialog.getFrameState() != null)) {
-      config.setSetting(DIALOG_JAROPTIONS_STATE, (_jarOptionsDialog.getFrameState().toString()));
-    }
-    else {
-      // Reset to defaults to restore pristine behavior.
-      config.setSetting(DIALOG_JAROPTIONS_STATE, DIALOG_JAROPTIONS_STATE.getDefault());
-    }
-    
-    // "Tabbed Panes" frame position and size.
-    if ((DrJava.getConfig().getSetting(DIALOG_TABBEDPANES_STORE_POSITION).booleanValue())
-          && (_tabbedPanesFrame != null) && (_tabbedPanesFrame.getFrameState() != null)) {
-      config.setSetting(DIALOG_TABBEDPANES_STATE, (_tabbedPanesFrame.getFrameState().toString()));
-    }
-    else {
-      // Reset to defaults to restore pristine behavior.
-      config.setSetting(DIALOG_TABBEDPANES_STATE, DIALOG_TABBEDPANES_STATE.getDefault());
-    }
-    
-    // "Debugger" frame position and size.
-    if ((DrJava.getConfig().getSetting(DIALOG_DEBUGFRAME_STORE_POSITION).booleanValue())
-          && (_debugFrame != null) && (_debugFrame.getFrameState() != null)) {
-      config.setSetting(DIALOG_DEBUGFRAME_STATE, (_debugFrame.getFrameState().toString()));
-    }
-    else {
-      // Reset to defaults to restore pristine behavior.
-      config.setSetting(DIALOG_DEBUGFRAME_STATE, DIALOG_DEBUGFRAME_STATE.getDefault());
-    }
-    
-    // Panel heights.
-    if (_showDebugger) config.setSetting(DEBUG_PANEL_HEIGHT, Integer.valueOf(_debugPanel.getHeight()));
-    
-    // Doc list width.
-    config.setSetting(DOC_LIST_WIDTH, Integer.valueOf(_docSplitPane.getDividerLocation()));
+    return config;
   }
-  
+
   private void _cleanUpDebugger() { if (isDebuggerReady()) _model.getDebugger().shutdown(); }
   
   private void _compile() {
@@ -5679,7 +5694,6 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
       catch (IOException ioe) { MainFrameStatics.showIOError(MainFrame.this, ioe); }
     }
     finally { hourglassOff();}
-//    update(getGraphics());
   }
   
   private void _compileFolder() {
@@ -8202,42 +8216,44 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
     _defScrollPanes.put(doc, scroll);
     return scroll;
   }
+
   // coarsely update the displayed RegionsTreePanel
   private <R extends OrderedDocumentRegion> void reloadPanel(final RegionsTreePanel<R> p,
                                                              final OpenDefinitionsDocument doc,
                                                              int offset)
   {
-    final RegionManager<R> rm = p.getRegionManager();
-    SortedSet<R> regions = rm.getRegions(doc);
-    if (regions == null || regions.size() == 0) return;
-    // Adjust line numbers and line bounds if insert involves newline
-    final int numLinesChangedAfter = doc.getDocument().getAndResetNumLinesChangedAfter();
-    // interval regions that need line number updating
-    Pair<R, R> lineNumInterval = null;
-    if (numLinesChangedAfter >= 0)  {
-      // insertion/deletion included a newline
-      // Update the bounds of the affected regions
-      // TODO: These casts are bad! R is not always StaticDocumentRegion (of course).
-      // The code only works because the RegionManager implementations happen to not strictly
-      // require values of type R.  Either the interface for RegionManager.updateLines()
-      // and RegionManager.reload() needs to be generalized, or a means for creating
-      // values that are truly of type R needs to be provided.
-      @SuppressWarnings("unchecked") R start =
-              (R) new StaticDocumentRegion(doc, numLinesChangedAfter, numLinesChangedAfter);
-      int len = doc.getLength();
-      @SuppressWarnings("unchecked") R end = (R) new StaticDocumentRegion(doc, len, len);
-      lineNumInterval = Pair.make(start, end);
-    }
+      final RegionManager<R> rm = p.getRegionManager();
+      SortedSet<R> regions = rm.getRegions(doc);
+      if (regions == null || regions.size() == 0) return;
+      // Adjust line numbers and line bounds if insert involves newline
+      final int numLinesChangedAfter = doc.getDocument().getAndResetNumLinesChangedAfter();
+      // interval regions that need line number updating
+      Pair<R, R> lineNumInterval = null;
+      if (numLinesChangedAfter >= 0)  {
+        // insertion/deletion included a newline
+        // Update the bounds of the affected regions
+        // TODO: These casts are bad! R is not always StaticDocumentRegion (of course).
+        // The code only works because the RegionManager implementations happen to not strictly
+        // require values of type R.  Either the interface for RegionManager.updateLines()
+        // and RegionManager.reload() needs to be generalized, or a means for creating
+        // values that are truly of type R needs to be provided.
+        @SuppressWarnings("unchecked") R start =
+                (R) new StaticDocumentRegion(doc, numLinesChangedAfter, numLinesChangedAfter);
+        int len = doc.getLength();
+        @SuppressWarnings("unchecked") R end = (R) new StaticDocumentRegion(doc, len, len);
+        lineNumInterval = Pair.make(start, end);
+      }
 
-    Pair<R, R> interval = rm.getRegionInterval(doc, offset);
-    if (interval == null && lineNumInterval == null) return;
-    interval = maxInterval(lineNumInterval, interval);
+      Pair<R, R> interval = rm.getRegionInterval(doc, offset);
+      if (interval == null && lineNumInterval == null) return;
+      interval = maxInterval(lineNumInterval, interval);
 
-    if (setRegion(p, doc, rm)) return;
-    // Queue a request to perform the update
+      if (setRegion(p, doc, rm)) return;
+      // Queue a request to perform the update
 
-    updateMillis();
+      updateMillis();
   }
+
   private void updateMillis() {
     _threadPool.submit(new Runnable() {
       // Create and run a new aynchronous task that waits UPDATE_DELAY millis, then performs update in event thread
@@ -9117,8 +9133,7 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
                                         + files[0].getPath(),
                                       "File Not Found",
                                       JOptionPane.ERROR_MESSAGE);
-      }
-      else {
+      }else {
         final List<String> filePaths = new ArrayList<String>();
         for (File f : files) { filePaths.add(f.getPath()); }
         
