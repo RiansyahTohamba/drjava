@@ -1,7 +1,7 @@
-/* 
+package sudah;/*
 BELUM REFACTORING
 
-ErrorPanel.ErrorListPane.ErrorListPane()
+sudah.ErrorPanel.ErrorListPane.ErrorListPane()
 constructor dengan DCH 10
 417-343
 
