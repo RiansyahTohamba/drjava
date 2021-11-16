@@ -7691,45 +7691,34 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
 //  Lightweight parsing has been disabled until we have something that is beneficial and works better in the background.
 //      _model.getParsingControl().delay();
     }
-    
+
     public int lastLine() { return _line; }
     public int lastCol() { return _col; }
   }
-  
+  // 7850 - 7700 = 150 LOC
   /* Only called from MainFrame constructor. */
   private void _setUpTabs() {
-    
     _updateMenuBars();
-    
     // Interactions
     _interactionsController.setPrevPaneAction(_switchToPreviousPaneAction);
     _interactionsController.setNextPaneAction(_switchToNextPaneAction);
-    
-    JScrollPane interactionsScroll = 
-      new BorderlessScrollPane(_interactionsPane, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS,
-                               ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+    JScrollPane interactionsScroll = new BorderlessScrollPane(_interactionsPane, ScrollPaneConstants.VERTICAL_SCROLLBAR_ALWAYS, ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED);
     _interactionsContainer.add(interactionsScroll, BorderLayout.CENTER);
-    
     if (_showDebugger) {
       // hook highlighting listener to breakpoint manager
       _model.getBreakpointManager().addListener(new RegionManagerListener<Breakpoint>() {
         /* Called when a breakpoint is added. Only runs in event thread. */
         public void regionAdded(final Breakpoint bp) {
           DefinitionsPane bpPane = getDefPaneGivenODD(bp.getDocument());
-          _documentBreakpointHighlights.
-            put(bp, bpPane.getHighlightManager().
-                  addHighlight(bp.getStartOffset(), bp.getEndOffset(), 
-                               bp.isEnabled() ? DefinitionsPane.BREAKPOINT_PAINTER
-                                 : DefinitionsPane.DISABLED_BREAKPOINT_PAINTER));
+          HighlightManager.HighlightInfo highlight = getHighlightInfo(bp, bpPane);
+          _documentBreakpointHighlights.put(bp, highlight);
           _updateDebugStatus();
         }
-        
         /** Called when a breakpoint is changed. Only runs in event thread. */
         public void regionChanged(Breakpoint bp) { 
           regionRemoved(bp);
           regionAdded(bp);
         }
-        
         /** Called when a breakpoint is removed. Only runs in event thread. */
         public void regionRemoved(final Breakpoint bp) {      
           HighlightManager.HighlightInfo highlight = _documentBreakpointHighlights.get(bp);
@@ -7738,7 +7727,6 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
         }
       });
     }
-    
     // hook highlighting listener to bookmark manager
     _model.getBookmarkManager().addListener(new RegionManagerListener<MovingDocumentRegion>() { 
       // listener methods only run in the event thread
@@ -7758,22 +7746,58 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
         _documentBookmarkHighlights.remove(r);
       }
     });
-    
+    setTabbedPane();
+
+    _interactionsPane.addKeyListener(_historyListener);
+    _interactionsPane.addFocusListener(_focusListenerForRecentDocs);
+    _interactionsController.addFocusListener(new FocusAdapter() {
+      public void focusGained(FocusEvent e){ 
+        _undoAction.setDelegatee(_interactionsController.getUndoAction());
+        _redoAction.setDelegatee(_interactionsController.getRedoAction());  
+      }
+    });
+    _consoleScroll.addKeyListener(_historyListener);
+    _consoleScroll.addFocusListener(_focusListenerForRecentDocs);
+    addLastTabs();
+    _interactionsContainer.addFocusListener(new FocusAdapter() {
+      public void focusGained(FocusEvent e) { 
+        EventQueue.invokeLater(new Runnable() { 
+          public void run() {
+            _interactionsPane.requestFocusInWindow();
+          }
+        });
+      }
+    });
+
+    setFocusListener();
+  }
+
+  private HighlightManager.HighlightInfo getHighlightInfo(Breakpoint bp, DefinitionsPane bpPane) {
+    ReverseHighlighter.DrJavaHighlightPainter painter = bp.isEnabled() ? DefinitionsPane.BREAKPOINT_PAINTER : DefinitionsPane.DISABLED_BREAKPOINT_PAINTER;
+    HighlightManager.HighlightInfo highlight = bpPane.getHighlightManager().addHighlight(bp.getStartOffset(), bp.getEndOffset(), painter);
+    return highlight;
+  }
+
+  private void addLastTabs() {
+    _tabs.addLast(_compilerErrorPanel);
+    _tabs.addLast(_junitPanel);
+    _tabs.addLast(_javadocErrorPanel);
+    _tabs.addLast(_findReplace);
+    if (_showDebugger) { _tabs.addLast(_breakpointsPanel); }
+    _tabs.addLast(_bookmarksPanel);
+  }
+
+  private void setTabbedPane() {
     _tabbedPane.addChangeListener(new ChangeListener () {
       /* Only runs in the event thread. */
       public void stateChanged(ChangeEvent e) {
-//        System.out.println("_tabbedPane.stateChanged called with event " + e);
         clearStatusMessage();
-        
         if (_tabbedPane.getSelectedIndex() == INTERACTIONS_TAB) {
-          // Use EventQueue because this action must execute AFTER all pending events in the event queue
-//        System.err.println("Interactions Container Selected");
           _interactionsContainer.setVisible(true);  // kluge to overcome subtle focus bug
-          EventQueue.invokeLater(new Runnable() {  
-            public void run() { _interactionsContainer.requestFocusInWindow(); }  
+          EventQueue.invokeLater(new Runnable() {
+            public void run() { _interactionsContainer.requestFocusInWindow(); }
           });
-        }
-        else if (_tabbedPane.getSelectedIndex() == CONSOLE_TAB) {
+        } else if (_tabbedPane.getSelectedIndex() == CONSOLE_TAB) {
           // Use EventQueue because this action must execute AFTER all pending events in the event queue
 //          System.err.println("Console Scroll Selected");
           EventQueue.invokeLater(new Runnable() { public void run() { _consoleScroll.requestFocusInWindow(); } });
@@ -7784,43 +7808,14 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
           _currentDefPane.removeErrorHighlight(); // removes highlighting whenever the current tabbed pane is switched
           _currentDefPane.getErrorCaretListener().updateHighlight(pos);
         }
+
       }
     });
-    
     _tabbedPane.add("Interactions", _interactionsContainer);
     _tabbedPane.add("Console", _consoleScroll);
-    
-    _interactionsPane.addKeyListener(_historyListener);
-    _interactionsPane.addFocusListener(_focusListenerForRecentDocs);
-    _interactionsController.addFocusListener(new FocusAdapter() {
-      public void focusGained(FocusEvent e){ 
-        _undoAction.setDelegatee(_interactionsController.getUndoAction());
-        _redoAction.setDelegatee(_interactionsController.getRedoAction());  
-      }
-    });
-    
-    _consoleScroll.addKeyListener(_historyListener);
-    _consoleScroll.addFocusListener(_focusListenerForRecentDocs);
-    
-    
-    _tabs.addLast(_compilerErrorPanel);
-    _tabs.addLast(_junitPanel);
-    _tabs.addLast(_javadocErrorPanel);
-    _tabs.addLast(_findReplace);
-    if (_showDebugger) { _tabs.addLast(_breakpointsPanel); }
-    _tabs.addLast(_bookmarksPanel);
-    
-    _interactionsContainer.addFocusListener(new FocusAdapter() {
-      public void focusGained(FocusEvent e) { 
-        EventQueue.invokeLater(new Runnable() { 
-          public void run() {
-//            System.err.println("Requesting focus in interactions pane");
-            _interactionsPane.requestFocusInWindow(); 
-          }
-        });
-      }
-    });
-    
+  }
+
+  private void setFocusListener() {
     _interactionsPane.addFocusListener(new FocusAdapter() {
       public void focusGained(FocusEvent e) { _lastFocusOwner = _interactionsContainer; }
     });
@@ -7830,25 +7825,30 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
     _compilerErrorPanel.getMainPanel().addFocusListener(new FocusAdapter() {
       public void focusGained(FocusEvent e) { _lastFocusOwner = _compilerErrorPanel; }
     });
+
     _junitPanel.getMainPanel().addFocusListener(new FocusAdapter() {
       public void focusGained(FocusEvent e) { _lastFocusOwner = _junitPanel; }
     });
+
     _javadocErrorPanel.getMainPanel().addFocusListener(new FocusAdapter() {
       public void focusGained(FocusEvent e) { _lastFocusOwner = _javadocErrorPanel; }
     });
+
     _findReplace.getFindField().addFocusListener(new FocusAdapter() {
       public void focusGained(FocusEvent e) { _lastFocusOwner = _findReplace; }
     });
+
     if (_showDebugger) {
       _breakpointsPanel.getMainPanel().addFocusListener(new FocusAdapter() {
         public void focusGained(FocusEvent e) { _lastFocusOwner = _breakpointsPanel; }
       });
     }
-    _bookmarksPanel.getMainPanel().addFocusListener(new FocusAdapter() { 
+
+    _bookmarksPanel.getMainPanel().addFocusListener(new FocusAdapter() {
       public void focusGained(FocusEvent e) { _lastFocusOwner = _bookmarksPanel; }
     });
   }
-  
+
   /** Realizes this MainFrame by setting it visibile and configures the tabbed Pane. Only runs in the event thread. */
   public void start() {
     
