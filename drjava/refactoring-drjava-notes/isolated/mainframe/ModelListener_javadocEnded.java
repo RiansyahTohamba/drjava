@@ -1,1 +1,0 @@
-dari MainFrame

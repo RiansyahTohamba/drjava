@@ -16,7 +16,15 @@ hanya 'x = new X()' berkali-kali
 
 3. DefinitionsPane
 	DefinitionsPane()=10
+4. - IsolatedIndenter
 
-4.
 
-5.
+# masih calon False Positive
+
+startUp=	JPDADebugger
+run=	ProjectAdvancedPropertiesFrame$4$2
+reloadPanel=	MainFrame$240
+run=	MainFrame$149
+setup=	DrJavaPropertySetup
+createCompleteWordDialog=	AutoCompletePopup
+_setupView()	= AbstractConsoleController

@@ -1,8 +1,5 @@
 /* 
-  	BELUM REFACTORING
-	cek regex nya
-
-
+	sudah: cek regex nya
 */
 class MainFrame{
 	private void _storePositionInfo() {
