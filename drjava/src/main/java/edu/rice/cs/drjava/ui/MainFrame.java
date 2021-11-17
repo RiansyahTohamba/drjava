@@ -1445,23 +1445,14 @@ refactoring log:
   /** Initialize dialog if necessary. */
   void initGotoFileDialog() {
     if (_gotoFileDialog == null) {
-      PredictiveInputFrame.InfoSupplier<GoToFileListEntry> info = getInfoSupplier();
-      PredictiveInputFrame.CloseAction<GoToFileListEntry> okAction = getInfoSupplier();
-      PredictiveInputFrame.CloseAction<GoToFileListEntry> cancelAction = getCancelAction();
-      ArrayList<PredictiveInputModel.MatchingStrategy<GoToFileListEntry>> strategies = getStrategies();
-
-      List<PredictiveInputFrame.CloseAction<GoToFileListEntry>> actions
-        = new ArrayList<PredictiveInputFrame.CloseAction<GoToFileListEntry>>();
-
-      actions.add(okAction);
-      actions.add(cancelAction);
-
-      setGotoFileDialog(info, strategies, actions);
+      List<PredictiveInputFrame.CloseAction<GoToFileListEntry>> actions = new ArrayList<PredictiveInputFrame.CloseAction<GoToFileListEntry>>();
+      actions.add(getOkAction());
+      actions.add(getCancelAction());
+      setGotoFileDialog(getInfoSupplier(), getStrategies(), actions);
       // putting one dummy entry in the list; it will be changed later anyway
       if (DrJava.getConfig().getSetting(DIALOG_GOTOFILE_STORE_POSITION).booleanValue()) {
         _gotoFileDialog.setFrameState(DrJava.getConfig().getSetting(DIALOG_GOTOFILE_STATE));
       }
-
     }
   }
 
@@ -7733,7 +7724,7 @@ refactoring log:
     */
     doc.addDocumentListener(new DocumentUIListener() {
       /** Updates panel displayed in interactions subwindow. */
-      private void updateUI(OpenDefin itionsDocument doc, int offset) {
+      private void updateUI(OpenDefinitionsDocument doc, int offset) {
         assert EventQueue.isDispatchThread();
         Component c = _tabbedPane.getSelectedComponent();
         if (c instanceof RegionsTreePanel<?>) {
@@ -7802,7 +7793,7 @@ refactoring log:
       if (interval == null && lineNumInterval == null) return;
       interval = maxInterval(lineNumInterval, interval);
 
-      if (setRegion(p, doc, rm)) return;
+      if (setRegion(p, doc, rm,interval)) return;
       // Queue a request to perform the update
 
       updateMillis();
@@ -7829,7 +7820,7 @@ refactoring log:
     });
   }
 
-  private <R extends OrderedDocumentRegion> boolean setRegion(final RegionsTreePanel<R> p, OpenDefinitionsDocument doc, final RegionManager<R> rm) {
+  private <R extends OrderedDocumentRegion> boolean setRegion(final RegionsTreePanel<R> p, OpenDefinitionsDocument doc, final RegionManager<R> rm,Pair<R, R> interval) {
     final R first = interval.first();
     final R last = interval.second();
 

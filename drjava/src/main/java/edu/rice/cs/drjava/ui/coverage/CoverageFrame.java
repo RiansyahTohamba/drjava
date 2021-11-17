@@ -318,22 +318,18 @@ public class CoverageFrame extends SwingFrame {
      *                document; false to highlight everything
      */
     //    3x extract method
-    private void highlight(Map<String, List<String>> lineColors, boolean selOnly) {
+    private void highlight(Map<String, List<String>> lineColors, boolean selOnly) throws ClassNameNotFoundException {
         /* Get an iterator over the documents to be highlighted */
-
-        while (getIter(selOnly).hasNext()) {
+        Iterator<OpenDefinitionsDocument> iter = getIter(selOnly);
+        while (iter.hasNext()) {
             /* Get the file to highlight */
             OpenDefinitionsDocument o = iter.next();
             final DefinitionsPane pane = _mainFrame.getDefPaneGivenODD(o);
-            try {
-                addListenerRemoveHighl(lineColors, o, pane);
-            } catch (ClassNameNotFoundException e) {
-                continue;
-            }
+            addListenerRemoveHighl(lineColors, o, pane);
         }
     }
 
-    private void addListenerRemoveHighl(Map<String, List<String>> lineColors, OpenDefinitionsDocument o, DefinitionsPane pane) {
+    private void addListenerRemoveHighl(Map<String, List<String>> lineColors, OpenDefinitionsDocument o, DefinitionsPane pane) throws ClassNameNotFoundException {
         List<String> colors = lineColors.get(o.getQualifiedClassName());
         /* Highlight each line */
         for (int i = 0; i < colors.size(); i++) {
@@ -358,7 +354,7 @@ public class CoverageFrame extends SwingFrame {
         }
     }
 
-    private CompilerListener getRemoveHighlight(DefinitionsPane pane, HighlightInfo info) {
+    private CompilerListener getRemoveHighlight(final DefinitionsPane pane, final HighlightInfo info) {
         CompilerListener removeHighlight = new DummyCompilerListener() {
             @Override
             public void compileAborted(Exception e) {

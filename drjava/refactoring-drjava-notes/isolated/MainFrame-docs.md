@@ -2,10 +2,12 @@ MainFrame docs
 
 setUpDrJavaProperties is `the last method` to be refactoring.
 nanti dikumpulkan lagi data-data terkait extract method refactoring nya
-lalu disimpulkan!
+
 generate dch drjava lagi!
 
-coba tambah project juga
+lalu masukin ke slide!
+
+coba tambah project!
 
 # setUpDrJavaProperties 
 sebaiknya dipisah saja
