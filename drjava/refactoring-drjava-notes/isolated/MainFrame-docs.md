@@ -1,8 +1,11 @@
 MainFrame docs
 
-ini method terkahir yang direfactoring
+setUpDrJavaProperties is `the last method` to be refactoring.
 nanti dikumpulkan lagi data-data terkait extract method refactoring nya
 lalu disimpulkan!
+generate dch drjava lagi!
+
+coba tambah project juga
 
 # setUpDrJavaProperties 
 sebaiknya dipisah saja
