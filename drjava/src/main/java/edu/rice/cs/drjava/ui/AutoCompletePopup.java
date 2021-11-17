@@ -310,12 +310,18 @@ public class AutoCompletePopup {
     });
     PlatformFactory.ONLY.setMnemonic(_completeJavaAPICheckbox,'j');
 
-    Iterator<KeyStroke> ksIt = actionKeyStrokes.iterator();
-    Iterator<Runnable3<AutoCompletePopupEntry,Integer,Integer>> actionIt =
-            acceptedActions.iterator();
+    List<PredictiveInputFrame.CloseAction<AutoCompletePopupEntry>> actions = new ArrayList<PredictiveInputFrame.CloseAction<AutoCompletePopupEntry>>();
     Iterator<String> nameIt = actionNames.iterator();
+    Iterator<Runnable3<AutoCompletePopupEntry,Integer,Integer>> actionIt = acceptedActions.iterator();
+    Iterator<KeyStroke> ksIt = actionKeyStrokes.iterator();
 
-    addOkActions(start, loc, canceledAction, acceptedActions, ksIt, actionIt, nameIt);
+    for(int i = 0; i<acceptedActions.size(); ++i) {
+      final String name = nameIt.next();
+      final Runnable3<AutoCompletePopupEntry,Integer,Integer> runnable = actionIt.next();
+      final KeyStroke ks = ksIt.next();
+      actions.add(getOkAction(start, loc, canceledAction, name, runnable, ks));
+    }
+    actions.add(getCancelAct(canceledAction));
 
     // Note: PredictiveInputModel.* is statically imported
     java.util.ArrayList<MatchingStrategy<AutoCompletePopupEntry>> strategies =
@@ -341,7 +347,31 @@ public class AutoCompletePopup {
     return dialogThunk.value();
   }
 
-  private PredictiveInputFrame.CloseAction<AutoCompletePopupEntry> getCancelAct(Runnable canceledAction) {
+  private PredictiveInputFrame.CloseAction<AutoCompletePopupEntry> getOkAction(final int start, final int loc, final Runnable canceledAction, final String name, final Runnable3<AutoCompletePopupEntry, Integer, Integer> runnable, final KeyStroke ks) {
+    PredictiveInputFrame.CloseAction<AutoCompletePopupEntry> okAction =
+            new PredictiveInputFrame.CloseAction<AutoCompletePopupEntry>() {
+              public String getName() { return name; }
+              public KeyStroke getKeyStroke() { return ks; }
+              public String getToolTipText() { return "Complete the identifier"; }
+              public Object value(final PredictiveInputFrame<AutoCompletePopupEntry> p) {
+                _lastState = p.getFrameState();
+                if (p.getItem() != null) {
+                  Utilities.invokeAndWait(new Runnable() {
+                    public void run() {
+                      runnable.run(p.getItem(), start, loc);
+                    }
+                  });
+                }
+                else {
+                  Utilities.invokeAndWait(canceledAction);
+                }
+                return null;
+              }
+            };
+    return okAction;
+  }
+
+  private PredictiveInputFrame.CloseAction<AutoCompletePopupEntry> getCancelAct(final Runnable canceledAction) {
     PredictiveInputFrame.CloseAction<AutoCompletePopupEntry> cancelAction =
       new PredictiveInputFrame.CloseAction<AutoCompletePopupEntry>() {
       public String getName() { return "Cancel"; }
@@ -356,42 +386,6 @@ public class AutoCompletePopup {
     return cancelAction;
   }
 
-  private void addOkActions(int start, int loc, Runnable canceledAction, SizedIterable<Runnable3<AutoCompletePopupEntry, Integer, Integer>> acceptedActions, Iterator<KeyStroke> ksIt, Iterator<Runnable3<AutoCompletePopupEntry, Integer, Integer>> actionIt, Iterator<String> nameIt) {
-
-    for(int i = 0; i< acceptedActions.size(); ++i) {
-      final String name = nameIt.next();
-      final Runnable3<AutoCompletePopupEntry,Integer,Integer> runnable = actionIt.next();
-      final KeyStroke ks = ksIt.next();
-
-      PredictiveInputFrame.CloseAction<AutoCompletePopupEntry> okAction =
-        new PredictiveInputFrame.CloseAction<AutoCompletePopupEntry>()
-      {
-
-        public String getName() { return name; }
-        public KeyStroke getKeyStroke() { return ks; }
-        public String getToolTipText() { return "Complete the identifier"; }
-        public Object value(final PredictiveInputFrame<AutoCompletePopupEntry> p) {
-          _lastState = p.getFrameState();
-          if (p.getItem() != null) {
-            Utilities.invokeAndWait(new Runnable() {
-              public void run() {
-                runnable.run(p.getItem(), start, loc);
-              }
-            });
-          }
-          else {
-            Utilities.invokeAndWait(canceledAction);
-          }
-          return null;
-        }
-      };
-      List<PredictiveInputFrame.CloseAction<AutoCompletePopupEntry>> actions = new ArrayList<PredictiveInputFrame.CloseAction<AutoCompletePopupEntry>>();
-
-      actions.add(okAction);
-    }
-    actions.add(getCancelAct(canceledAction));
-
-  }
 
   private PredictiveInputFrame.InfoSupplier<AutoCompletePopupEntry> getInfo() {
     PredictiveInputFrame.InfoSupplier<AutoCompletePopupEntry> info = new PredictiveInputFrame.InfoSupplier<AutoCompletePopupEntry>() {
@@ -415,13 +409,10 @@ public class AutoCompletePopup {
     else removeJavaAPI();
 
     dialogThunk.value().setItems(true,_allEntries);
-    dialogThunk.value().setMask(getCurMask());
+    dialogThunk.value().setMask(dialogThunk.value().getMask());
     dialogThunk.value().resetFocus();
   }
 
-  private String getCurMask(){
-    return dialogThunk.value().getMask();
-  }
   
   private void addJavaAPI() {
     Set<JavaAPIListEntry> apiSet = _mainFrame.getJavaAPISet();

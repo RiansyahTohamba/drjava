@@ -1,15 +1,14 @@
 AutoCompletePopup::createCompleteWordDialog.md
 
 # berapa total refactoring?
-5 x extract method
+change to 4x extract method on AutoCompletePopup::createCompleteWordDialog
 
 ## berikut detailnya
 createCompleteWordDialog() depend on:
-    completeCheckBox() depend on:
-        getCurMask()
+    completeCheckBox()
     getInfo()
-    addOkActions() depend on:    
-        getCancelAct()
+    getOkAction()
+    getCancelAct()
 
 
 ## function_variable 
