@@ -29,6 +29,7 @@
 package edu.rice.cs.drjava.ui;
 
 import edu.rice.cs.drjava.DrJava;
+import edu.rice.cs.drjava.config.FileConfiguration;
 import edu.rice.cs.drjava.config.OptionConstants;
 import edu.rice.cs.drjava.config.OptionEvent;
 import edu.rice.cs.drjava.config.OptionListener;
@@ -334,24 +335,16 @@ public abstract class ErrorPanel extends TabbedPanel implements OptionConstants 
         else  selectNothing();
       }
     };
-    
-//    private Hashtable<Position, DJError> _setUpErrorTable() {
-//      return new Hashtable<Position, DJError>();
-//    }
-    
+
     /** Constructs the CompilerErrorListPane.*/
     public ErrorListPane() {
-      //      // If we set this pane to be of type text/rtf, it wraps based on words
-//      // as opposed to based on characters.
-    // 3 extract method: addOptionListener, setColors, getConfig
-
-    public ErrorListPane() {
+        // If we set this pane to be of type text/rtf, it wraps based on words
+        // as opposed to based on characters.
+        // 3 extract method: addOptionListener, setColors, getConfig
         setContentType("text/rtf");
         setDocument(new ErrorDocument(getErrorDocumentTitle()));
         setHighlighter(new ReverseHighlighter());
-        
         addMouseListener(defaultMouseListener);
-        
         _selectedIndex = 0;
         _errorListPositions = new Position[0];
           
@@ -381,15 +374,14 @@ public abstract class ErrorPanel extends TabbedPanel implements OptionConstants 
             }
           }
         });
-        
         _keymap = addKeymap("ERRORLIST_KEYMAP", getKeymap());
-        
         addActionForKeyStroke(getConfig().getSetting(OptionConstants.KEY_CUT), cutAction);
         addActionForKeyStroke(getConfig().getSetting(OptionConstants.KEY_COPY), copyAction);
         addActionForKeyStroke(getConfig().getSetting(OptionConstants.KEY_PASTE_FROM_HISTORY), pasteAction);
 
       addOptionListener();
     }
+
     private void addOptionListener() {
       getConfig().addOptionListener(OptionConstants.KEY_CUT, new OptionListener<Vector<KeyStroke>>() {
         public void optionChanged(OptionEvent<Vector<KeyStroke>> oe) {
@@ -407,15 +399,17 @@ public abstract class ErrorPanel extends TabbedPanel implements OptionConstants 
         }
       });
     }
+
     private void setColors() {
       StyleConstants.setForeground(NORMAL_ATTRIBUTES, getConfig().getSetting(DEFINITIONS_NORMAL_COLOR));
       StyleConstants.setForeground(BOLD_ATTRIBUTES, getConfig().getSetting(DEFINITIONS_NORMAL_COLOR));
       setBackground(getConfig().getSetting(DEFINITIONS_BACKGROUND_COLOR));
     }
+
     private FileConfiguration getConfig(){
-        return DrJssava.getConfig();
-      }
+       return DrJava.getConfig();
     }
+
 
     
     /** Gets the ErrorDocument associated with this ErrorListPane.
@@ -788,7 +782,6 @@ public abstract class ErrorPanel extends TabbedPanel implements OptionConstants 
      *  @param error The error to switch to
      */
     void switchToError(DJError error) {
-//      Utilities.showDebug("ErrorPanel.switchToError called");
       if (error == null) return;
       
       final SingleDisplayModel model = getModel();
@@ -906,7 +899,7 @@ public abstract class ErrorPanel extends TabbedPanel implements OptionConstants 
     }
     public String getErrorDocumentTitle() { return "Errors"; }
   }
-  
+//  end of class ErrorPanel at line 902
   public class ErrorDocument extends SwingDocument {
     protected volatile DrJavaBook _book;
     protected final String _title;
