@@ -1,5 +1,33 @@
 MainFrame docs
 
+ini method terkahir yang direfactoring
+nanti dikumpulkan lagi data-data terkait extract method refactoring nya
+lalu disimpulkan!
+
+# setUpDrJavaProperties 
+sebaiknya dipisah saja
+karena sudah punya 10 method
+lalu tak ada properti mainframe yg dibutuhkan 
+
+## siapa saja yang memakai setUpDrJavaProperties?
+hanya satu function yang pakai, yaitu constructor MainFrame()
+wkwk
+
+
+# kelas MainFrameProperties membutuhkan properti MainFrame apa saja?
+= private volatile AbstractGlobalModel _model; (sudah)
+= MainFrame.this
+
+properti  ini milik objFrame
+= Cannot resolve symbol '_posListener'
+= Cannot resolve method 'open(edu.rice.cs.util.FileOpenSelector)'
+	open berasal dari kode 
+	public void open(FileOpenSelector openSelector) {
+= Cannot resolve method '_saveAll()'
+= Cannot resolve method '_compileAll()'
+= Cannot resolve method '_jumpToLine(int)'
+
+
 # Berapa jumlah nested class dalam class MainFrame?
 	21
 

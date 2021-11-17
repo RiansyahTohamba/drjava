@@ -90,30 +90,23 @@ import edu.rice.cs.drjava.ui.predictive.PredictiveInputModel;
 import edu.rice.cs.drjava.ui.avail.*;
 import edu.rice.cs.drjava.project.*;
 import edu.rice.cs.plt.concurrent.JVMBuilder;
-import edu.rice.cs.plt.io.IOUtil;
 import edu.rice.cs.plt.iter.IterUtil;
 //import edu.rice.cs.plt.lambda.*;
 import edu.rice.cs.plt.lambda.DelayedThunk;
 import edu.rice.cs.plt.lambda.Predicate;
 import edu.rice.cs.plt.lambda.Runnable1;  // variant on Runnable with unary run method
 import edu.rice.cs.plt.lambda.Runnable3;  // variant on Runnable with ternary run method
-import edu.rice.cs.plt.lambda.Thunk;
 import edu.rice.cs.plt.reflect.JavaVersion;
 import edu.rice.cs.plt.tuple.Pair;
+import edu.rice.cs.util.*;
 import edu.rice.cs.util.classloader.ClassFileError;
 import edu.rice.cs.util.docnavigation.*;
 import edu.rice.cs.drjava.model.FileMovedException;
-import edu.rice.cs.util.FileOpenSelector;
-import edu.rice.cs.util.FileOps;
-import edu.rice.cs.util.Log;
-import edu.rice.cs.util.OperationCanceledException;
-import edu.rice.cs.util.StringOps;
 import edu.rice.cs.util.swing.Utilities;
 import edu.rice.cs.util.swing.*;
 import edu.rice.cs.util.text.ConsoleDocument;
 import edu.rice.cs.util.text.SwingDocument;
-import edu.rice.cs.util.UnexpectedException;
-import edu.rice.cs.util.XMLConfig;
+
 import static edu.rice.cs.drjava.config.OptionConstants.KEY_NEW_CLASS_FILE;
 import static edu.rice.cs.drjava.ui.RecentFileManager.*;
 import static edu.rice.cs.drjava.ui.predictive.PredictiveInputModel.*;
@@ -123,7 +116,7 @@ import static edu.rice.cs.drjava.ui.MainFrameStatics.*;
 /** DrJava's main window. */
 public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetListener {
   private static final Log _log = new Log("MainFrame.txt", false);
-  
+
   private static final int INTERACTIONS_TAB = 0;
   private static final int CONSOLE_TAB = 1;
   private static final String ICON_PATH = "/edu/rice/cs/drjava/ui/icons/";
@@ -1443,110 +1436,144 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
     }
   }
   
+  /*
+refactoring log:
+ 5x extract method:
+ getInfoSupplier, getInfoSupplier, getCancelAction, getStrategies
+ setGotoFileDialog
+ */
   /** Initialize dialog if necessary. */
   void initGotoFileDialog() {
     if (_gotoFileDialog == null) {
-      PredictiveInputFrame.InfoSupplier<GoToFileListEntry> info = 
-        new PredictiveInputFrame.InfoSupplier<GoToFileListEntry>() {
-        public String value(GoToFileListEntry entry) {
-          final StringBuilder sb = new StringBuilder();
-          
-          final OpenDefinitionsDocument doc = entry.getOpenDefinitionsDocument();
-          if (doc != null) {
-            try {
-              try { sb.append(FileOps.stringMakeRelativeTo(doc.getRawFile(), doc.getSourceRoot())); }
-              catch(IOException e) { sb.append(doc.getFile()); }
-            }
-            catch(FileMovedException e) { sb.append(entry + " was moved"); }
-            catch(InvalidPackageException e) { sb.append(entry); }
-          } 
-          else sb.append(entry);
-          return sb.toString();
-        }
-      };
-      PredictiveInputFrame.CloseAction<GoToFileListEntry> okAction = 
-        new PredictiveInputFrame.CloseAction<GoToFileListEntry>() {
-        public String getName() { return "OK"; }
-        public KeyStroke getKeyStroke() { return KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0); }
-        public String getToolTipText() { return null; }
-        public Object value(PredictiveInputFrame<GoToFileListEntry> p) {
-          if (p.getItem() != null) {
-            final OpenDefinitionsDocument newDoc = p.getItem().getOpenDefinitionsDocument();
-            if (newDoc != null) {
-              final boolean docChanged = ! newDoc.equals(_model.getActiveDocument());
-              final boolean docSwitch = _model.getActiveDocument() != newDoc;
-              if (docSwitch) _model.setActiveDocument(newDoc);
-              final int curLine = newDoc.getCurrentLine();
-              final String t = p.getText();
-              final int last = t.lastIndexOf(':');
-              if (last >= 0) {
-                try {
-                  String end = t.substring(last + 1);
-                  int val = Integer.parseInt(end);
-                  
-                  final int lineNum = Math.max(1, val);
-                  Runnable command = new Runnable() {
-                    public void run() {
-                      try { _jumpToLine(lineNum); }  // adds this region to browser history
-                      catch (RuntimeException e) { _jumpToLine(curLine); }
-                    }
-                  };
-                  if (docSwitch) {
-                    // postpone running command until after document switch, which is pending in the event queue
-                    EventQueue.invokeLater(command);
-                  }
-                  else command.run();
-                }
-                catch(RuntimeException e) { /* ignore */ }
-              }
-              else if (docChanged) {
-                // defer executing this code until after active document switch (if any) is complete
-                addToBrowserHistory();
-              }
-            }
-          }
-          hourglassOff();
-          return null;
-        }
-      };
-      PredictiveInputFrame.CloseAction<GoToFileListEntry> cancelAction = 
-        new PredictiveInputFrame.CloseAction<GoToFileListEntry>() {
-        public String getName() { return "Cancel"; }
-        public KeyStroke getKeyStroke() { return KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0); }
-        public String getToolTipText() { return null; }
-        public Object value(PredictiveInputFrame<GoToFileListEntry> p) {
-          hourglassOff();
-          return null;
-        }
-      };
-      ArrayList<PredictiveInputModel.MatchingStrategy<GoToFileListEntry>> strategies =
-        new ArrayList<PredictiveInputModel.MatchingStrategy<GoToFileListEntry>>();
-      strategies.add(new PredictiveInputModel.FragmentLineNumStrategy<GoToFileListEntry>());
-      strategies.add(new PredictiveInputModel.PrefixLineNumStrategy<GoToFileListEntry>());
-      strategies.add(new PredictiveInputModel.RegExLineNumStrategy<GoToFileListEntry>());
+      PredictiveInputFrame.InfoSupplier<GoToFileListEntry> info = getInfoSupplier();
+      PredictiveInputFrame.CloseAction<GoToFileListEntry> okAction = getInfoSupplier();
+      PredictiveInputFrame.CloseAction<GoToFileListEntry> cancelAction = getCancelAction();
+      ArrayList<PredictiveInputModel.MatchingStrategy<GoToFileListEntry>> strategies = getStrategies();
+
       List<PredictiveInputFrame.CloseAction<GoToFileListEntry>> actions
         = new ArrayList<PredictiveInputFrame.CloseAction<GoToFileListEntry>>();
+
       actions.add(okAction);
       actions.add(cancelAction);
-      _gotoFileDialog = 
-        new PredictiveInputFrame<GoToFileListEntry>(MainFrame.this,
-                                                    "Go to File",
-                                                    true, // force
-                                                    true, // ignore case
-                                                    info,
-                                                    strategies,
-                                                    actions, 1, // cancel is action 1
-                                                    new GoToFileListEntry(null, "dummyGoto")) {
-        public void setOwnerEnabled(boolean b) {
-          if (b) { hourglassOff(); } else { hourglassOn(); }
-        }
-      }; 
+
+      setGotoFileDialog(info, strategies, actions);
       // putting one dummy entry in the list; it will be changed later anyway
-      
       if (DrJava.getConfig().getSetting(DIALOG_GOTOFILE_STORE_POSITION).booleanValue()) {
         _gotoFileDialog.setFrameState(DrJava.getConfig().getSetting(DIALOG_GOTOFILE_STATE));
-      }      
+      }
+
     }
+  }
+
+  private void setGotoFileDialog(PredictiveInputFrame.InfoSupplier<GoToFileListEntry> info, ArrayList<PredictiveInputModel.MatchingStrategy<GoToFileListEntry>> strategies, List<PredictiveInputFrame.CloseAction<GoToFileListEntry>> actions) {
+    boolean isForce = true;
+    boolean isIgnoreCase = true;
+    int cancel = 1; // cancel is action 1
+
+    _gotoFileDialog = new PredictiveInputFrame<GoToFileListEntry>(MainFrame.this,
+                                                  "Go to File", isForce, isIgnoreCase,
+            info, strategies, actions, cancel,
+                                                  new GoToFileListEntry(null, "dummyGoto"))
+    {
+      public void setOwnerEnabled(boolean b) {
+        if (b) hourglassOff();
+        else hourglassOn();
+      }
+    };
+  }
+
+  private ArrayList<PredictiveInputModel.MatchingStrategy<GoToFileListEntry>> getStrategies() {
+    ArrayList<PredictiveInputModel.MatchingStrategy<GoToFileListEntry>> strategies =
+      new ArrayList<PredictiveInputModel.MatchingStrategy<GoToFileListEntry>>();
+
+    strategies.add(new PredictiveInputModel.FragmentLineNumStrategy<GoToFileListEntry>());
+    strategies.add(new PredictiveInputModel.PrefixLineNumStrategy<GoToFileListEntry>());
+    strategies.add(new PredictiveInputModel.RegExLineNumStrategy<GoToFileListEntry>());
+    return strategies;
+  }
+
+  private PredictiveInputFrame.CloseAction<GoToFileListEntry> getCancelAction() {
+    PredictiveInputFrame.CloseAction<GoToFileListEntry> cancelAction =
+      new PredictiveInputFrame.CloseAction<GoToFileListEntry>() {
+      public String getName() { return "Cancel"; }
+      public KeyStroke getKeyStroke() { return KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0); }
+      public String getToolTipText() { return null; }
+      public Object value(PredictiveInputFrame<GoToFileListEntry> p) {
+        hourglassOff();
+        return null;
+      }
+    };
+    return cancelAction;
+  }
+
+  private PredictiveInputFrame.CloseAction<GoToFileListEntry> getOkAction() {
+    PredictiveInputFrame.CloseAction<GoToFileListEntry> okAction =
+      new PredictiveInputFrame.CloseAction<GoToFileListEntry>() {
+      public String getName() { return "OK"; }
+      public KeyStroke getKeyStroke() { return KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0); }
+      public String getToolTipText() { return null; }
+      public Object value(PredictiveInputFrame<GoToFileListEntry> p) {
+        if (p.getItem() != null) {
+          final OpenDefinitionsDocument newDoc = p.getItem().getOpenDefinitionsDocument();
+          if (newDoc != null) {
+            final boolean docChanged = ! newDoc.equals(_model.getActiveDocument());
+            final boolean docSwitch = _model.getActiveDocument() != newDoc;
+            if (docSwitch) _model.setActiveDocument(newDoc);
+            final int curLine = newDoc.getCurrentLine();
+            final String t = p.getText();
+            final int last = t.lastIndexOf(':');
+            if (last >= 0) {
+              try {
+                String end = t.substring(last + 1);
+                int val = Integer.parseInt(end);
+
+                final int lineNum = Math.max(1, val);
+                Runnable command = new Runnable() {
+                  public void run() {
+                    try { _jumpToLine(lineNum); }  // adds this region to browser history
+                    catch (RuntimeException e) { _jumpToLine(curLine); }
+                  }
+                };
+                if (docSwitch) {
+                  // postpone running command until after document switch, which is pending in the event queue
+                  EventQueue.invokeLater(command);
+                }
+                else command.run();
+              }
+              catch(RuntimeException e) { /* ignore */ }
+            }
+            else if (docChanged) {
+              // defer executing this code until after active document switch (if any) is complete
+              addToBrowserHistory();
+            }
+          }
+        }
+        hourglassOff();
+        return null;
+      }
+    };
+    return okAction;
+  }
+
+  private PredictiveInputFrame.InfoSupplier<GoToFileListEntry> getInfoSupplier() {
+    PredictiveInputFrame.InfoSupplier<GoToFileListEntry> info =
+      new PredictiveInputFrame.InfoSupplier<GoToFileListEntry>() {
+        public String value(GoToFileListEntry entry) {
+        final StringBuilder sb = new StringBuilder();
+        final OpenDefinitionsDocument doc = entry.getOpenDefinitionsDocument();
+        if (doc != null) {
+          try {
+            try { sb.append(FileOps.stringMakeRelativeTo(doc.getRawFile(), doc.getSourceRoot())); }
+            catch(IOException e) { sb.append(doc.getFile()); }
+          }
+          catch(FileMovedException e) { sb.append(entry + " was moved"); }
+          catch(InvalidPackageException e) { sb.append(entry); }
+        }
+        else sb.append(entry);
+        return sb.toString();
+      }
+      };
+    return info;
   }
   
   /** The "Go to File" dialog instance. */
@@ -3341,9 +3368,10 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
       
       JScrollPane defScroll = _createDefScrollPane(_model.getActiveDocument());
       
-      _docSplitPane = 
-        new BorderlessSplitPane(JSplitPane.HORIZONTAL_SPLIT, true,
-                                new JScrollPane(_model.getDocumentNavigator().asContainer()), defScroll);
+      _docSplitPane = new BorderlessSplitPane(
+                        JSplitPane.HORIZONTAL_SPLIT, true,
+                        new JScrollPane(_model.getDocumentNavigator().asContainer()), defScroll);
+
       _debugSplitPane = new BorderlessSplitPane(JSplitPane.VERTICAL_SPLIT, true);
       _mainSplit = new JSplitPane(JSplitPane.VERTICAL_SPLIT, true, _docSplitPane, _tabbedPane);
 
@@ -3564,18 +3592,21 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
       
       // I assume that we want to be contained on the default screen.
       // TODO: support spanning screens in multi-screen setups.
-      Rectangle bounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().
-        getDefaultConfiguration().getBounds();
-      
-      if (x == Integer.MAX_VALUE)  x = (bounds.width - width + bounds.x) / 2;    // magic value for "not set" - center.
-      if (y == Integer.MAX_VALUE)  y = (bounds.height - height + bounds.y) / 2;  // magic value for "not set" - center.
-      if (x < bounds.x)  x = bounds.x;                                           // Too far left, move to left edge.
-      if (y < bounds.y)  y = bounds.y;                                           // Too far up, move to top edge.
-      if ((x + width) > (bounds.x + bounds.width))  x = bounds.width - width + bounds.x; 
+      Rectangle bounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getDefaultScreenDevice().getDefaultConfiguration().getBounds();
+
+      // magic value for "not set" - center.
+      if (x == Integer.MAX_VALUE)  x = (bounds.width - width + bounds.x) / 2;
+      // magic value for "not set" - center.
+      if (y == Integer.MAX_VALUE)  y = (bounds.height - height + bounds.y) / 2;
+      // Too far left, move to left edge.
+      if (x < bounds.x)  x = bounds.x;
+      // Too far up, move to top edge.
+      if (y < bounds.y)  y = bounds.y;
       // Too far right, move to right edge.
-      if ((y + height) > (bounds.y + bounds.height))  y = bounds.height - height + bounds.y; 
+      if ((x + width) > (bounds.x + bounds.width))  x = bounds.width - width + bounds.x;
       // Too far down, move to bottom edge.
-      
+      if ((y + height) > (bounds.y + bounds.height))  y = bounds.height - height + bounds.y;
+
       //ensure that we don't set window state to minimized
       state &= ~Frame.ICONIFIED;
       
@@ -3655,39 +3686,7 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
         }
       };
       DrJava.getConfig().addOptionListener(JAVADOC_API_REF_VERSION, choiceOptionListener);
-      
-      // The OptionListener for JAVADOC_XXX_LINK.
-//      OptionListener<String> link13OptionListener = new OptionListener<String>() {
-//        public void optionChanged(OptionEvent<String> oce) {
-//          String linkVersion = DrJava.getConfig().getSetting(JAVADOC_API_REF_VERSION);
-//          if (linkVersion.equals(JAVADOC_1_3_TEXT) ||
-//              linkVersion.equals(JAVADOC_AUTO_TEXT)) {
-//            clearJavaAPISet();
-//          }
-//        }
-//      };
-//      DrJava.getConfig().addOptionListener(JAVADOC_1_3_LINK, link13OptionListener);
-//      OptionListener<String> link14OptionListener = new OptionListener<String>() {
-//        public void optionChanged(OptionEvent<String> oce) {
-//          String linkVersion = DrJava.getConfig().getSetting(JAVADOC_API_REF_VERSION);
-//          if (linkVersion.equals(JAVADOC_1_4_TEXT) ||
-//              linkVersion.equals(JAVADOC_AUTO_TEXT)) {
-//            clearJavaAPISet();
-//          }
-//        }
-//      };
-//      DrJava.getConfig().addOptionListener(JAVADOC_1_4_LINK, link14OptionListener);
-//      OptionListener<String> link15OptionListener = new OptionListener<String>() {
-//        public void optionChanged(OptionEvent<String> oce) {
-//          String linkVersion = DrJava.getConfig().getSetting(JAVADOC_API_REF_VERSION);
-//          if (linkVersion.equals(JAVADOC_1_5_TEXT) ||
-//              linkVersion.equals(JAVADOC_AUTO_TEXT)) {
-//            clearJavaAPISet();
-//          }
-//        }
-//      };
-//      DrJava.getConfig().addOptionListener(JAVADOC_1_5_LINK, link15OptionListener);
-      
+
       OptionListener<String> link16OptionListener = new OptionListener<String>() {
         public void optionChanged(OptionEvent<String> oce) {
           String linkVersion = DrJava.getConfig().getSetting(JAVADOC_API_REF_VERSION);
@@ -3776,10 +3775,8 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
       ConfigOptionListeners.sanitizeMasterJVMArgs(MainFrame.this, config.getSetting(MASTER_JVM_ARGS), masterJVMArgsListener);
       ConfigOptionListeners.sanitizeMasterJVMXMX(MainFrame.this, config.getSetting(MASTER_JVM_XMX));
       ConfigOptionListeners.sanitizeJavadocCustomParams(MainFrame.this, config.getSetting(JAVADOC_CUSTOM_PARAMS));
-      config.addOptionListener(REMOTE_CONTROL_ENABLED, new ConfigOptionListeners.
-                                 RequiresDrJavaRestartListener<Boolean>(_configFrame, "Remote Control"));
-      config.addOptionListener(REMOTE_CONTROL_PORT, new ConfigOptionListeners.
-                                 RequiresDrJavaRestartListener<Integer>(_configFrame, "Remote Control Port"));
+      config.addOptionListener(REMOTE_CONTROL_ENABLED, new ConfigOptionListeners.RequiresDrJavaRestartListener<Boolean>(_configFrame, "Remote Control"));
+      config.addOptionListener(REMOTE_CONTROL_PORT, new ConfigOptionListeners.RequiresDrJavaRestartListener<Integer>(_configFrame, "Remote Control Port"));
       config.addOptionListener(DEFAULT_COMPILER_PREFERENCE, new ConfigOptionListeners.DefaultCompilerListener(_configFrame));
       // If any errors occurred while parsing config file, show them
       _showConfigException();
@@ -3801,7 +3798,6 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
                ((e.getModifiersEx() & (InputEvent.CTRL_DOWN_MASK|InputEvent.SHIFT_DOWN_MASK))
                   == (InputEvent.CTRL_DOWN_MASK|InputEvent.SHIFT_DOWN_MASK))) &&
               (e.getComponent().getClass().equals(DefinitionsPane.class))) {
-//          System.out.println("discarding `, modifiers = "+e.getModifiersEx()+": "+e.getComponent());
             discardEvent = true;
           }
           return discardEvent;
@@ -3826,22 +3822,15 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
             }
             msg += ".<br>Please select an unused port in the Preferences dialog.<br>"+
               "In the meantime, do you want to disable the remote control feature?";
-            int n = JOptionPane.showOptionDialog(MainFrame.this,
-                                                 msg,
-                                                 "Could Not Start Remote Control Server",
-                                                 JOptionPane.YES_NO_OPTION,
-                                                 JOptionPane.QUESTION_MESSAGE,
-                                                 null,
-                                                 options,
-                                                 options[1]);
+            int n = JOptionPane.showOptionDialog(MainFrame.this,msg,"Could Not Start Remote Control Server",JOptionPane.YES_NO_OPTION,JOptionPane.QUESTION_MESSAGE,null,options,options[1]);
             if (n==JOptionPane.YES_OPTION) {
               DrJava.getConfig().setSetting(OptionConstants.REMOTE_CONTROL_ENABLED, false);
             }
           }
         }
       }
-      
-      setUpDrJavaProperties();  
+
+      new MainFrameProperties(_posListener, _model,MainFrame.this).setUpDrJavaProperties();
       
       DrJavaErrorHandler.setButton(_errorsButton);
       
@@ -3913,25 +3902,7 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
           }
         }
       }
-//      if (!alreadyShowedDialog) {
-//        // ask if the user wants to submit the survey
-//        // but only if we haven't just asked if the user wants to download a new version
-//        // two dialogs on program start is too much clutter
-//        if (DrJava.getConfig().getSetting(DIALOG_DRJAVA_SURVEY_ENABLED) && 
-//            ! edu.rice.cs.util.swing.Utilities.TEST_MODE) {
-//          if (DrJavaSurveyPopup.maySubmitSurvey()) {
-//            // either enough days have passed, or the configuration has changed
-//            alreadyShowedDialog = true;
-//            EventQueue.invokeLater(new Runnable() {
-//              public void run() {
-//                DrJavaSurveyPopup popup = new DrJavaSurveyPopup(MainFrame.this);
-//                popup.setVisible(true);
-//              }
-//            });
-//          }
-//        }
-//      }
-      
+
       initDone();  // call mandated by SwingFrame contract
       
       EventQueue.invokeLater(new Runnable() {
@@ -3946,424 +3917,7 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
     _updateToolBarVisible();
     super.setVisible(b); 
   }
-  
-  /** This method sets up all the DrJava properties that can be used as variables
-    * in external process command lines. */
-  public void setUpDrJavaProperties() {
-    final String DEF_DIR = "${drjava.working.dir}";
-    
-    DrJavaPropertySetup.setup(); 
-    
-    // Files
-    PropertyMaps.TEMPLATE.
-      setProperty("DrJava", 
-                  new FileProperty("drjava.current.file", new Thunk<File>() {
-      public File value() { return _model.getActiveDocument().getRawFile(); }
-    }, 
-                                   "Returns the current document in DrJava.\n"+
-                                   "Optional attributes:\n"+
-                                   "\trel=\"<dir to which the output should be relative\"\n"+
-                                   "\tsquote=\"<true to enclose file in single quotes>\"\n"+
-                                   "\tdquote=\"<true to enclose file in double quotes>\"") {
-                                     public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-                                   });
-    PropertyMaps.TEMPLATE.setProperty("DrJava", 
-                                      new DrJavaProperty("drjava.current.line", 
-                                                         "Returns the current line in the Definitions Pane.") {
-      public void update(PropertyMaps pm) { _value = String.valueOf(_posListener.lastLine()); }
-      public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-      public boolean isCurrent() { return false; }
-    });
-    PropertyMaps.TEMPLATE.
-      setProperty("DrJava", new DrJavaProperty("drjava.current.col",
-                                               "Returns the current column in the Definitions Pane.") {
-      public void update(PropertyMaps pm) {
-//        int line = _currentDefPane.getCurrentLine();
-//        int lineOffset = _currentDefPane.getLineStartOffset(line);
-//        int caretPos = _currentDefPane.getCaretPosition();
-        _value = String.valueOf(_posListener.lastCol());
-      }
-      public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-      public boolean isCurrent() { return false; }
-    });
-    PropertyMaps.TEMPLATE.
-      setProperty("DrJava", 
-                  new FileProperty("drjava.working.dir", new Thunk<File>() {
-      public File value() { return _model.getInteractionsModel().getWorkingDirectory(); }
-    },
-                                   "Returns the current working directory of DrJava.\n"+
-                                   "Optional attributes:\n"+
-                                   "\trel=\"<dir to which output should be relative\"\n"+
-                                   "\tsquote=\"<true to enclose file in single quotes>\"\n"+
-                                   "\tdquote=\"<true to enclose file in double quotes>\"") {
-                                     public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-                                   });
-    PropertyMaps.TEMPLATE.
-      setProperty("DrJava", 
-                  new FileProperty("drjava.master.working.dir", new Thunk<File>() {
-      public File value() { return _model.getMasterWorkingDirectory(); }
-    },
-                                   "Returns the working directory of the DrJava master JVM.\n"+
-                                   "Optional attributes:\n"+
-                                   "\trel=\"<dir to which output should be relative\"\n"+
-                                   "\tsquote=\"<true to enclose file in single quotes>\"\n"+
-                                   "\tdquote=\"<true to enclose file in double quotes>\"") {
-                                     public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-                                   });
-    
-    // Files
-    PropertyMaps.TEMPLATE.
-      setProperty("DrJava", 
-                  new FileListProperty("drjava.all.files", File.pathSeparator, DEF_DIR,
-                                       "Returns a list of all files open in DrJava.\n"+
-                                       "Optional attributes:\n"+
-                                       "\trel=\"<dir to which output should be relative\"\n"+
-                                       "\tsep=\"<separator between files>\"\n"+
-                                       "\tsquote=\"<true to enclose file in single quotes>\"\n"+
-                                       "\tdquote=\"<true to enclose file in double quotes>\"") {
-      protected List<File> getList(PropertyMaps pm) {
-        ArrayList<File> l = new ArrayList<File>();
-        for(OpenDefinitionsDocument odd: _model.getOpenDefinitionsDocuments()) {
-          l.add(odd.getRawFile());
-        }
-        return l;
-      }
-      public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-      public boolean isCurrent() { return false; }
-    });
-    PropertyMaps.TEMPLATE.
-      setProperty("DrJava", 
-                  new FileListProperty("drjava.project.files", File.pathSeparator, DEF_DIR,
-                                       "Returns a list of all files open in DrJava that belong " +
-                                       "to a project and are underneath the project root.\n" +
-                                       "Optional attributes:\n" +
-                                       "\trel=\"<dir to which output should be relative\"\n" +
-                                       "\tsep=\"<separator between files>\"\n"+
-                                       "\tsquote=\"<true to enclose file in single quotes>\"\n"+
-                                       "\tdquote=\"<true to enclose file in double quotes>\"") {
-      protected List<File> getList(PropertyMaps pm) {
-        ArrayList<File> l = new ArrayList<File>();
-        for(OpenDefinitionsDocument odd: _model.getProjectDocuments()) {
-          l.add(odd.getRawFile());
-        }
-        return l;
-      }
-      public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-      public boolean isCurrent() { return false; }
-    }).listenToInvalidatesOf(PropertyMaps.TEMPLATE.getProperty("DrJava", "drjava.all.files"));
-    PropertyMaps.TEMPLATE.
-      setProperty("DrJava", 
-                  new FileListProperty("drjava.included.files", File.pathSeparator, DEF_DIR,
-                                       "Returns a list of all files open in DrJava that are " +
-                                       "not underneath the project root but are included in " +
-                                       "the project.\n" +
-                                       "Optional attributes:\n" +
-                                       "\trel=\"<dir to which output should be relative\"\n" +
-                                       "\tsep=\"<separator between files>\"\n"+
-                                       "\tsquote=\"<true to enclose file in single quotes>\"\n"+
-                                       "\tdquote=\"<true to enclose file in double quotes>\"") {
-      protected List<File> getList(PropertyMaps pm) {
-        ArrayList<File> l = new ArrayList<File>();
-        for(OpenDefinitionsDocument odd: _model.getAuxiliaryDocuments()) {
-          l.add(odd.getRawFile());
-        }
-        return l;
-      }
-      public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-      public boolean isCurrent() { return false; }
-    }).listenToInvalidatesOf(PropertyMaps.TEMPLATE.getProperty("DrJava", "drjava.all.files"));
-    PropertyMaps.TEMPLATE.
-      setProperty("DrJava", 
-                  new FileListProperty("drjava.external.files", File.pathSeparator, DEF_DIR,
-                                       "Returns a list of all files open in DrJava that are "+
-                                       "not underneath the project root and are not included in "+
-                                       "the project.\n"+
-                                       "Optional attributes:\n"+
-                                       "\trel=\"<dir to which output should be relative\"\n"+
-                                       "\tsep=\"<separator between files>\"\n"+
-                                       "\tsquote=\"<true to enclose file in single quotes>\"\n"+
-                                       "\tdquote=\"<true to enclose file in double quotes>\"") {
-      protected List<File> getList(PropertyMaps pm) {
-        ArrayList<File> l = new ArrayList<File>();
-        for(OpenDefinitionsDocument odd: _model.getNonProjectDocuments()) {
-          l.add(odd.getRawFile());
-        }
-        return l;
-      }
-      public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-      public boolean isCurrent() { return false; }
-    }).listenToInvalidatesOf(PropertyMaps.TEMPLATE.getProperty("DrJava", "drjava.all.files"));    
-    
-    PropertyMaps.TEMPLATE.
-      setProperty("Misc", 
-                  new DrJavaProperty("input", "(User Input...)",
-                                     "Get an input string from the user.\n"+
-                                     "Optional attributes:\n"+
-                                     "\tprompt=\"<prompt to display>\"\n"+
-                                     "\tdefault=\"<suggestion to the user>\"") {
-      public String toString() {
-        return "(User Input...)";
-      }
-      public void update(PropertyMaps pm) {
-        String msg = _attributes.get("prompt");
-        if (msg == null) msg = "Please enter text for the external process.";
-        String input = _attributes.get("default");
-        if (input == null) input = "";
-        input = JOptionPane.showInputDialog(MainFrame.this, msg, input);
-        if (input == null) input = _attributes.get("default");
-        if (input == null) input = "";
-        _value = input;
-      }
-      public String getCurrent(PropertyMaps pm) {
-        invalidate();
-        return super.getCurrent(pm);
-      }
-      public void resetAttributes() {
-        _attributes.clear();
-        _attributes.put("prompt", null);
-        _attributes.put("default", null);
-      }
-      public boolean isCurrent() { return false; }
-    });
-    
-    // Project
-    PropertyMaps.TEMPLATE.
-      setProperty("Project", 
-                  new DrJavaProperty("project.mode",
-                                     "Evaluates to true if a project is loaded.") {
-      public void update(PropertyMaps pm) {
-        Boolean b = _model.isProjectActive();
-        String f = _attributes.get("fmt").toLowerCase();
-        if (f.equals("int")) _value = b ? "1" : "0";
-        else if (f.equals("yes")) _value = b ? "yes" : "no";
-        else _value = b.toString();
-      }
-      public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-      public void resetAttributes() {
-        _attributes.clear();
-        _attributes.put("fmt", "boolean");
-      }
-      public boolean isCurrent() { return false; }
-    });
-    PropertyMaps.TEMPLATE.
-      setProperty("Project", 
-                  new DrJavaProperty("project.changed",
-                                     "Evaluates to true if the project has been "+
-                                     "changed since the last save.") {  //TODO: factor out repeated code!
-      public void update(PropertyMaps pm) {
-//        long millis = System.currentTimeMillis();
-        String f = _attributes.get("fmt").toLowerCase();
-        Boolean b = _model.isProjectChanged();
-        if (f.equals("int")) _value = b ? "1" : "0";
-        else if (f.equals("yes")) _value = b ? "yes" : "no";
-        else  _value = b.toString();
-      }
-      public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-      public void resetAttributes() {
-        _attributes.clear();
-        _attributes.put("fmt", "boolean");
-      }
-      public boolean isCurrent() { return false; }
-    });
-    PropertyMaps.TEMPLATE.
-      setProperty("Project", 
-                  new FileProperty("project.file", 
-                                   new Thunk<File>() {
-      public File value() { return _model.getProjectFile(); }
-    },
-                                   "Returns the current project file in DrJava.\n"+
-                                   "Optional attributes:\n"+
-                                   "\trel=\"<dir to which the output should be relative\"\n"+
-                                   "\tsquote=\"<true to enclose file in single quotes>\"\n"+
-                                   "\tdquote=\"<true to enclose file in double quotes>\"") {
-                                     public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-                                   });
-    
-    PropertyMaps.TEMPLATE.
-      setProperty("Project", 
-                  new FileProperty("project.main.class", 
-                                   new Thunk<File>() {
-      public File value() { return new File(_model.getMainClass()); }
-    },
-                                   "Returns the current project file in DrJava.\n"+
-                                   "Optional attributes:\n"+
-                                   "\trel=\"<dir to which the output should be relative\"\n"+
-                                   "\tsquote=\"<true to enclose file in single quotes>\"\n"+
-                                   "\tdquote=\"<true to enclose file in double quotes>\"") {
-                                     public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-                                   });
-    PropertyMaps.TEMPLATE.
-      setProperty("Project", 
-                  new FileProperty("project.root", 
-                                   new Thunk<File>() {
-      public File value() { return _model.getProjectRoot(); }
-    },
-                                   "Returns the current project root in DrJava.\n"+
-                                   "Optional attributes:\n"+
-                                   "\trel=\"<dir to which the output should be relative\"\n"+
-                                   "\tsquote=\"<true to enclose file in single quotes>\"\n"+
-                                   "\tdquote=\"<true to enclose file in double quotes>\"") {
-                                     public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-                                   });
-    PropertyMaps.TEMPLATE.
-      setProperty("Project", 
-                  new FileProperty("project.build.dir", 
-                                   new Thunk<File>() {
-      public File value() { return _model.getBuildDirectory(); }
-    },
-                                   "Returns the current build directory in DrJava.\n"+
-                                   "Optional attributes:\n"+
-                                   "\trel=\"<dir to which the output should be relative\"\n"+
-                                   "\tsquote=\"<true to enclose file in single quotes>\"\n"+
-                                   "\tdquote=\"<true to enclose file in double quotes>\"") {
-                                     public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-                                   });
-    RecursiveFileListProperty classFilesProperty = 
-      new RecursiveFileListProperty("project.class.files", File.pathSeparator, DEF_DIR,
-                                    _model.getBuildDirectory().getAbsolutePath(),
-                                    "Returns the class files currently in the build directory.\n"+
-                                    "\trel=\"<dir to which the output should be relative\"\n"+
-                                    "\tsep=\"<string to separate files in the list>\"\n"+
-                                    "\tsquote=\"<true to enclose file in single quotes>\"\n"+
-                                    "\tdquote=\"<true to enclose file in double quotes>\"") {
-      /** Reset the attributes. */
-      public void resetAttributes() {
-        _attributes.clear();
-        _attributes.put("sep", _sep);
-        _attributes.put("rel", _dir);
-        _attributes.put("dir", _model.getBuildDirectory().getAbsolutePath());
-        _attributes.put("filter", "*.class");
-        _attributes.put("dirfilter", "*");
-      }
-    };
-    PropertyMaps.TEMPLATE.setProperty("Project", classFilesProperty);
-    PropertyMaps.TEMPLATE.
-      setProperty("Project", 
-                  new DrJavaProperty("project.auto.refresh",
-                                     "Evaluates to true if project auto-refresh is enabled.") {
-      public void update(PropertyMaps pm) {
-        Boolean b = _model.getAutoRefreshStatus();
-        String f = _attributes.get("fmt").toLowerCase();
-        if (f.equals("int")) _value = b ? "1" : "0";
-        else if (f.equals("yes")) _value = b ? "yes" : "no";
-        else _value = b.toString();
-      }
-      public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-      public void resetAttributes() {
-        _attributes.clear();
-        _attributes.put("fmt", "boolean");
-      }
-      public boolean isCurrent() { return false; }
-    });
-    PropertyMaps.TEMPLATE.
-      setProperty("Project", 
-                  new FileListProperty("project.excluded.files", File.pathSeparator, DEF_DIR,
-                                       "Returns a list of files that are excluded from DrJava's "+
-                                       "project auto-refresh.\n"+
-                                       "Optional attributes:\n"+
-                                       "\trel=\"<dir to which output should be relative\"\n"+
-                                       "\tsep=\"<separator between files>\"\n"+
-                                       "\tsquote=\"<true to enclose file in single quotes>\"\n"+
-                                       "\tdquote=\"<true to enclose file in double quotes>\"") {
-      protected List<File> getList(PropertyMaps pm) {
-        ArrayList<File> l = new ArrayList<File>();
-        for(File f: _model.getExclFiles()) { l.add(f); }
-        return l;
-      }
-      public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-      public boolean isCurrent() { return false; }
-    });
-    PropertyMaps.TEMPLATE.
-      setProperty("Project", 
-                  new FileListProperty("project.extra.class.path", File.pathSeparator, DEF_DIR,
-                                       "Returns a list of files in the project's extra "+
-                                       "class path.\n"+
-                                       "Optional attributes:\n"+
-                                       "\trel=\"<dir to which output should be relative\"\n"+
-                                       "\tsep=\"<separator between files>\"\n"+
-                                       "\tsquote=\"<true to enclose file in single quotes>\"\n"+
-                                       "\tdquote=\"<true to enclose file in double quotes>\"") {
-      protected List<File> getList(PropertyMaps pm) {
-        ArrayList<File> l = new ArrayList<File>();
-        for(File f: _model.getExtraClassPath()) { l.add(f); }
-        return l;
-      }
-      public String getLazy(PropertyMaps pm) { return getCurrent(pm); }
-      public boolean isCurrent() { return false; }
-    });
-    
-    // Actions
-    PropertyMaps.TEMPLATE.setProperty("Action", new DrJavaActionProperty("action.save.all", "(Save All...)",
-                                                                         "Execute a \"Save All\" action.") {
-      public void update(PropertyMaps pm) { _saveAll(); }
-      public boolean isCurrent() { return false; }
-    });
-    PropertyMaps.TEMPLATE.
-      setProperty("Action", new DrJavaActionProperty("action.compile.all", "(Compile All...)",
-                                                     "Execute a \"Compile All\" action.") {
-      public void update(PropertyMaps pm) { _compileAll(); }
-      public boolean isCurrent() { return false; }
-    });
-    PropertyMaps.TEMPLATE.
-      setProperty("Action", 
-                  new DrJavaActionProperty("action.clean", "(Clean Build Directory...)",
-                                           "Execute a \"Clean Build Directory\" action.") {
-      public void update(PropertyMaps pm) {
-        // could not use _clean(), since ProjectFileGroupingState.cleanBuildDirectory()
-        // is implemented as an asynchronous task, and DrJava would not wait for its completion
-        IOUtil.deleteRecursively(_model.getBuildDirectory());
-      }
-      public boolean isCurrent() { return false; }
-    });
-    PropertyMaps.TEMPLATE.setProperty("Action", new DrJavaActionProperty("action.open.file", "(Open File...)",
-                                                                         "Execute an \"Open File\" action.\n"+
-                                                                         "Required attributes:\n"+
-                                                                         "\tfile=\"<file to open>\"\n"+
-                                                                         "Optional attributes:\n"+
-                                                                         "\tline=\"<line number to display>") {
-      public void update(PropertyMaps pm) {
-        if (_attributes.get("file") != null) {
-          final String dir = StringOps.
-            unescapeFileName(StringOps.replaceVariables(DEF_DIR, pm, PropertyMaps.GET_CURRENT));
-          final String fil = StringOps.
-            unescapeFileName(StringOps.replaceVariables(_attributes.get("file"), pm, PropertyMaps.GET_CURRENT));
-          FileOpenSelector fs = new FileOpenSelector() {
-            public File[] getFiles() {
-              if (fil.startsWith("/")) { return new File[] { new File(fil) }; }
-              else { return new File[] { new File(dir, fil) }; }
-            }
-          };
-          open(fs);
-          int lineNo = -1;
-          if (_attributes.get("line") != null) {
-            try { lineNo = Integer.valueOf(_attributes.get("line")); }
-            catch(NumberFormatException nfe) { lineNo = -1; }
-          }
-          if (lineNo >= 0) {
-            final int l = lineNo;
-            Utilities.invokeLater(new Runnable() { public void run() { _jumpToLine(l); } });
-          }
-        }
-      }      
-      /** Reset the attributes. */
-      public void resetAttributes() {
-        _attributes.clear();
-        _attributes.put("file", null);
-        _attributes.put("line", null);
-      }
-      public boolean isCurrent() { return false; }
-    });
-    PropertyMaps.TEMPLATE.
-      setProperty("Action", 
-                  new DrJavaActionProperty("action.auto.refresh", "(Auto-Refresh...)",
-                                           "Execute an \"Auto-Refresh Project\" action.") {
-      public void update(PropertyMaps pm) {
-        _model.autoRefreshProject();
-      }
-      public boolean isCurrent() { return false; }
-    });
-  }
-  
+
   /** Sets up new painters for existing breakpoint highlights. */
   void refreshBreakpointHighlightPainter() {
     for(Map.Entry<Breakpoint,HighlightManager.HighlightInfo> pair: _documentBreakpointHighlights.entrySet()) {
@@ -5734,7 +5288,7 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
 //    update(getGraphics()); 
   }
   
-  private void _compileAll() {
+  public void _compileAll() {
     _cleanUpDebugger();
     hourglassOn();
     try { _model.getCompilerModel().compileAll(); }
@@ -7639,7 +7193,7 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
   }
   
   /** Inner class to handle updating the current position in a document.  Registered with the DefinitionsPane. **/
-  private class PositionListener implements CaretListener {
+  class PositionListener implements CaretListener {
     
     /* Cached caret coordinates */
     private volatile int _offset;
@@ -10108,7 +9662,8 @@ public class MainFrame extends SwingFrame implements ClipboardOwner, DropTargetL
     if (choice == JOptionPane.YES_OPTION) return _model.closeFileWithoutPrompt(d);
     return false;
   }
-  
+
+
   /** Confirms with the user that the file should be overwritten.
     * @param f file to overwrite
     * @return <code>true</code> iff the user accepts overwriting.
