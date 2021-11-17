@@ -71,25 +71,18 @@ public class Indenter {
     
     /* The following block of text was revised on 19 Jun 2017 to eliminate the (blanket) catching of exceptions
      * in the binding of autoCloseComments.  All unit tests currently pass at this point. */
-//    boolean autoCloseComments = false;
     boolean autoCloseComments = DrJava.getConfig().getSetting(OptionConstants.AUTO_CLOSE_COMMENTS).booleanValue();
-//    try { autoCloseComments = DrJava.getConfig().getSetting(OptionConstants.AUTO_CLOSE_COMMENTS).booleanValue(); }
-//    catch(Exception e) { /* ignore */ }  // some unit tests produce NullPointer exceptions in preceding line
     
     IndentRule
       // Main tree
       rule60 = new ActionStartPrevLinePlus(""),
       rule37 = new ActionStartCurrStmtPlus(indentLevel),
       rule36 = new ActionStartStmtOfBracePlus(indentLevel),
-      // the following two rules should be inserted after the instantiated classes have been implemented
-//      rule40 = new ActionStartOfAnonInnerClass(indentLevel),
-//      rule35 = new QuestionAnonInnerClassPrefix(rule40, rule36);
       rule34 = new QuestionExistsCharInStmt('?', ':', rule37, rule36),
       rule33 = new QuestionLineContains(':', rule34, rule37),
       rule32 = new ActionStartCurrStmtPlus(0),
       rule31 = new QuestionCurrLineStartsWithSkipComments("{", rule32, rule33),
       rule39 = new ActionStartPrevStmtPlus(0, true),  // Indent line that starts new statement
-//      rule29 = rule36,
       rule28 = new ActionStartPrevStmtPlus(0, false),
       rule30 = new QuestionExistsCharInPrevStmt('?', rule28, rule39),
       rule27 = new QuestionExistsCharInStmt('?', ':', rule28, rule36),
@@ -118,10 +111,8 @@ public class Indenter {
       
       // Comment tree
       rule12 = new ActionStartPrevLinePlus(""),
-//      rule11 = rule12,
       rule10 = new ActionStartPrevLinePlus("* "),
       rule09 = new QuestionCurrLineEmptyOrEnterPress(rule10, rule12),
-//      rule08 = rule12,
       rule07 = new QuestionCurrLineStartsWith("*", rule12, rule09),
       rule06 = new QuestionPrevLineStartsWith("*", rule07, rule12),
       rule05 = new ActionStartPrevLinePlus(" "),    // padding prefix for interior of ordinary block comment
@@ -135,10 +126,6 @@ public class Indenter {
       rule50 = new QuestionPrevLineStartsJavaDocWithText(rule49, rule41),
       
       rule03 = new QuestionCurrLineEmptyOrEnterPress(rule45, rule48),
-//      rule42 = new QuestionFollowedByStar(rule04, rule41),
-//      rule49 = new ActionStartPrevLinePlusMultilinePreserve(new String[] {"  */" }, 0, 4, 0, 4), 
-//      rule50 = new QuestionFollowedByStar(rule46, rule49),
-//      rule51 = new QuestionPrevLineStartsJavaDocWithText(rule50, rule42),
       rule51 = new QuestionCurrLineEmpty(rule50, rule03), // autoClose: rule03 unnecessarily retests CurrentLineEmpty
       rule02 = new QuestionPrevLineStartsComment(autoCloseComments ? rule51 : rule03, rule06),
       rule43 = new ActionDoNothing(),

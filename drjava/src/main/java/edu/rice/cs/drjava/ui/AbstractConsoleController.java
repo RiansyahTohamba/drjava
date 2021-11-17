@@ -169,13 +169,14 @@ public abstract class AbstractConsoleController /* implements Serializable */ {
       });
   }
 
-    private Vector<KeyStroke> getSetting(VectorOption<KeyStroke> key) {
-        return DrJava.getConfig().getSetting(key);
-    }
+  private Vector<KeyStroke> getSetting(VectorOption<KeyStroke> key) {
+      return DrJava.getConfig().getSetting(key);
+  }
 
-    private FileConfiguration getConfig(){
-        return DrJava.getConfig();
-    }
+  private FileConfiguration getConfig(){
+      return DrJava.getConfig();
+  }
+  
     /** Clears and resets the view (other than features derived from the model. */
   public void resetView() {
 //    _pane.resetPrompts();  // NOT USED

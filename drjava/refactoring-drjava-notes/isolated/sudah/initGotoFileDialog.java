@@ -1,7 +1,3 @@
-/* 
-BELUM REFACTORING
-	tinggal cari regex nya
-*/
 class MainFrame{
 /*
 refactoring log:
